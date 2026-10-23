@@ -14,6 +14,8 @@ export const PAL_OBJ = {
   T: '#3cb4a0', t: '#1f7468', u: '#9ae6d4',
   // ？ブロック・キノコ
   Q: '#f8a830', n: '#7a4a20', N: '#b07838', r: '#f05050', m: '#a82838',
+  // 光の玉
+  i: '#fffce8', J: '#ffe880', j: '#f0c050', O: '#d88a28',
 };
 
 export const TURN = [
@@ -249,21 +251,22 @@ export const USED = [
   '.KKKKKKKKKKKKKK.',
 ];
 
-export const MUSHROOM = [
-  '.....KKKKKK.....',
-  '...KKrrWWrrKK...',
-  '..KrrrWWWWrrrK..',
-  '.KrrrrWWWWrrrrK.',
-  '.KWWrrrWWrrrWWK.',
-  'KWWWWrrrrrrWWWWK',
-  'KWWWWrrrrrrWWWWK',
-  'KrWWrrrrrrrrWWrK',
-  'KrrrrmmmmmmrrrrK',
-  '.KmmKKKKKKKKmmK.',
-  '..KKLLKLLKLLKK..',
-  '...KLLKLLKLLK...',
-  '...KLLLLLLLLK...',
-  '...KLLLLLLLLK...',
-  '....KlLLLLlK....',
-  '.....KKKKKK.....',
+// 光の玉（パワーアップ）
+export const LIGHT_ORB = [
+  '................',
+  '......OOOO......',
+  '....OOjjjjOO....',
+  '...OjjJJJJjjO...',
+  '..OjJJJiiJJJjO..',
+  '..OjJJiWWiJJjO..',
+  '.OjJJiWWWWiJJjO.',
+  '.OjJiWWWWWWiJjO.',
+  '.OjJiWWWWWWiJjO.',
+  '.OjJJiWWWWiJJjO.',
+  '..OjJJiWWiJJjO..',
+  '..OjJJJiiJJJjO..',
+  '...OjjJJJJjjO...',
+  '....OOjjjjOO....',
+  '......OOOO......',
+  '................',
 ];

@@ -217,8 +217,8 @@ export class Player {
     this.pitFall();
   }
 
-  // キノコを取った (SprXXX_PowerUps_01C538)。小さければ大きくなる
-  giveMushroom() {
+  // 光の玉を取った（SMW のキノコ, SprXXX_PowerUps_01C538）。小さければ大きくなる
+  givePowerUp() {
     if (this.powerUp) {
       this.env.emit('powerup');
       return;

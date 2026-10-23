@@ -2,7 +2,7 @@
 // DOM に依存しない（描画は main.js / *_view.js）。
 import { Player } from './player.js';
 import { Level, Camera, GROUND_Y, SCREEN_W, LEVEL_H, TILE } from './level.js';
-import { GiftBox, Shell, Spiker, Mushroom } from './actors.js';
+import { GiftBox, Shell, Spiker, LightOrb } from './actors.js';
 import { BRICK_X, BRICK_Y, BRICK_XSPEED, BRICK_YSPEED } from './smw_tables.js';
 
 export class World {
@@ -32,8 +32,8 @@ export class World {
   // ブロックを叩いた（下から頭で・横から甲羅で）。？ブロックなら中身が出る
   hitTile(tx, ty) {
     const item = this.level.hitQuestion(tx, ty);
-    if (item === 'mushroom') {
-      this.actors.push(new Mushroom(tx * 16, ty * 16));
+    if (item === 'light') {
+      this.actors.push(new LightOrb(tx * 16, ty * 16));
       this.emit('sprout');
       return;
     }

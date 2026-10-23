@@ -45,7 +45,7 @@ export class Level {
     this.widthPx = LEVEL_W;
     this.bounces = []; // 叩かれたターンブロック {tx, ty, t}
     this.spawns = [];  // {type: 'gift' | 'shell' | 'spiker', x, y}
-    this.contents = new Map(); // ？ブロックの中身 'tx,ty' → 'mushroom'
+    this.contents = new Map(); // ？ブロックの中身 'tx,ty' → 'light'（光の玉）
     this.build();
   }
 
@@ -72,9 +72,9 @@ export class Level {
     this.fill(70, 22, 3, 2, TILE.TURN);
 
     this.buildTerrainTest(groundRow);
-    // スタート近くの ？ブロック（キノコ）
-    this.question(8, 20, 'mushroom');
-    this.question(55, 20, 'mushroom');
+    // スタート近くの ？ブロック（光の玉）
+    this.question(8, 20, 'light');
+    this.question(55, 20, 'light');
 
     const at = (tx, type, dy = 0) => this.spawns.push({ type, x: tx * 16, y: GROUND_Y - 16 + dy });
     at(12, 'gift');

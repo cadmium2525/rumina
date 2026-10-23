@@ -3,7 +3,7 @@ import { RUMINA_FRAMES_TEXT } from './rumina_frames.js';
 import { POSE } from './player.js';
 import {
   PAL_OBJ, GIFT, SPIKER_A, SPIKER_B, PIECE_GOLD, PIECE_GIFT, STAR_A, STAR_B,
-  SHELL_SIDE, SHELL_FRONT, SHELL_EDGE, MUSHROOM,
+  SHELL_SIDE, SHELL_FRONT, SHELL_EDGE, LIGHT_ORB,
 } from './art.js';
 
 export const PALETTE = {
@@ -66,8 +66,8 @@ const POSE_FRAME = {
   [POSE.KICK]: 'kick',
   [POSE.CLIMB]: 'climb', [POSE.SLIDE]: 'slide',
   // 泳ぎ：水をかく 2 コマと、浮いているコマ（持っている時は持ったまま）
-  [POSE.SWIM_A]: 'fall', [POSE.SWIM_B]: 'runjump', [POSE.SWIM]: 'jump',
-  [POSE.SWIM_A_CARRY]: 'carry_jump', [POSE.SWIM_B_CARRY]: 'carry_jump', [POSE.SWIM_CARRY]: 'carry_jump',
+  [POSE.SWIM_A]: 'swim_a', [POSE.SWIM_B]: 'swim_b', [POSE.SWIM]: 'swim',
+  [POSE.SWIM_A_CARRY]: 'swim_a_carry', [POSE.SWIM_B_CARRY]: 'swim_b_carry', [POSE.SWIM_CARRY]: 'carry_jump',
 };
 
 // 小さい状態（チビルミナ）のポーズ → フレーム名
@@ -82,8 +82,8 @@ const SMALL_FRAME = {
   [POSE.CARRY_UP]: 'c_carry', [POSE.PICKUP]: 'c_duck_carry', [POSE.CARRY_JUMP]: 'c_carry_jump',
   [POSE.KICK]: 'c_kick',
   [POSE.CLIMB]: 'c_climb', [POSE.SLIDE]: 'c_slide',
-  [POSE.SWIM_A]: 'c_fall', [POSE.SWIM_B]: 'c_jump', [POSE.SWIM]: 'c_jump',
-  [POSE.SWIM_A_CARRY]: 'c_carry_jump', [POSE.SWIM_B_CARRY]: 'c_carry_jump', [POSE.SWIM_CARRY]: 'c_carry_jump',
+  [POSE.SWIM_A]: 'c_swim_a', [POSE.SWIM_B]: 'c_swim_b', [POSE.SWIM]: 'c_swim',
+  [POSE.SWIM_A_CARRY]: 'c_swim_a_carry', [POSE.SWIM_B_CARRY]: 'c_swim_b_carry', [POSE.SWIM_CARRY]: 'c_carry_jump',
   [POSE.DEAD]: 'c_dead',
 };
 
@@ -145,7 +145,7 @@ export class SmokeSprites {
 export class ActorSprites {
   constructor() {
     this.gift = gridToCanvas(GIFT, PAL_OBJ);
-    this.mushroom = gridToCanvas(MUSHROOM, PAL_OBJ);
+    this.light = gridToCanvas(LIGHT_ORB, PAL_OBJ);
     this.spiker = [SPIKER_A, SPIKER_B].map((f) => ({
       right: gridToCanvas(f, PAL_OBJ, false),
       left: gridToCanvas(f, PAL_OBJ, true),
@@ -161,9 +161,27 @@ export class ActorSprites {
   }
 
   drawActor(g, a, frame, x, y) {
-    if (a.type === 'mushroom') {
+    if (a.type === 'light') {
       // 出てくる最初の 8 フレームは描かない (1540 < 0x36)
-      if (a.emerge < 0x36) g.drawImage(this.mushroom, x, y);
+      if (a.emerge >= 0x36) return;
+      // まわりの光（脈打つ）と、きらめき
+      const r = 9 + ((frame >> 3) & 1);
+      g.save();
+      g.globalAlpha = 0.28;
+      g.fillStyle = '#fff6b0';
+      g.beginPath();
+      g.arc(x + 8, y + 8, r, 0, Math.PI * 2);
+      g.fill();
+      g.restore();
+      g.drawImage(this.light, x, y);
+      const t = (frame >> 2) & 7;
+      if (t < 4) {
+        const sx = x + [1, 13, 14, 2][(frame >> 5) & 3];
+        const sy = y + [2, 1, 12, 13][(frame >> 5) & 3];
+        g.fillStyle = '#ffffff';
+        g.fillRect(sx, sy - (t >> 1), 1, 1 + t);
+        g.fillRect(sx - (t >> 1), sy, 1 + t, 1);
+      }
       return;
     }
     if (a.type === 'gift') {

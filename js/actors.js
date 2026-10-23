@@ -435,12 +435,12 @@ export class Spiker extends Sprite {
   }
 }
 
-// キノコ（SMW のスーパーキノコ, sprite 0x74 / SprXXX_PowerUps_StarEntry 01C353）。
-// ？ブロックから 62 フレームかけて出てきて、1px/フレームで歩く。壁で向きを変える
-export class Mushroom extends Sprite {
+// 光の玉（パワーアップ）。動きは SMW のスーパーキノコ (sprite 0x74 / SprXXX_PowerUps_StarEntry 01C353) と同じ：
+// ？ブロックから 62 フレームかけて出てきて、1px/フレームで転がる。壁で向きを変える
+export class LightOrb extends Sprite {
   constructor(x, y) {
     super(x, y);
-    this.type = 'mushroom';
+    this.type = 'light';
     this.emerge = 62;        // $1540：ブロックから出てくる途中
     this.contactTimer = 44;  // $154C：出てすぐは取れない
     this.facing = 1;
@@ -469,7 +469,7 @@ export class Mushroom extends Sprite {
     const p = w.player;
     if (!this.contactTimer && this.emerge < 0x18 && touchesPlayer(p, this.hitbox)) {
       this.dead = true;
-      p.giveMushroom();
+      p.givePowerUp();
       return;
     }
     if (this.offscreen(w, 64)) this.dead = true;

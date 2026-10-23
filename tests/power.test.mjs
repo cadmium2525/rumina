@@ -15,25 +15,25 @@ const R = PAD.RIGHT, L = PAD.LEFT;
   assert.equal(w.player.hitbox.y, w.player.ypos + 0x14, 'small hitbox');
 }
 {
-  // ？ブロックを下から叩くとキノコが出て、取ると大きくなる
+  // ？ブロックを下から叩くと光の玉が出て、取ると大きくなる
   const w = makeWorld({ power: 0 });
   const lv = w.level;
-  lv.question(6, 21, 'mushroom'); // 地面の 3 段上（頭がちょうど届く）
+  lv.question(6, 21, 'light'); // 地面の 3 段上（頭がちょうど届く）
   const p = w.player;
   p.xpos = 6 * 16;
   run(w, 30, (f) => [f < 10 ? B : 0]);
   assert.equal(lv.tileAt(6, 21), TILE.USED, 'block used');
-  const m = w.actors.find((a) => a.type === 'mushroom');
-  assert.ok(m, 'mushroom spawned');
-  // キノコは右へ歩き、ブロックから落ちる。走って追いかけて取る
+  const m = w.actors.find((a) => a.type === 'light');
+  assert.ok(m, 'light orb spawned');
+  // 光の玉は右へ歩き、ブロックから落ちる。走って追いかけて取る
   run(w, 90, () => [0]);
-  assert.ok(m.x > 7 * 16 && m.y === GROUND_Y - 16, `mushroom walked off the block ${m.x},${m.y}`);
+  assert.ok(m.x > 7 * 16 && m.y === GROUND_Y - 16, `light orb walked off the block ${m.x},${m.y}`);
   let grewAt = -1;
   for (let f = 0; f < 300 && grewAt < 0; f++) {
     run(w, 1, () => [R | Y]);
     if (p.state === STATE.GROW) grewAt = f;
   }
-  assert.ok(grewAt >= 0, 'touched mushroom');
+  assert.ok(grewAt >= 0, 'touched light orb');
   assert.ok(w.events.includes('grow'));
   const x0 = p.xpos;
   run(w, 47, () => [R]);
@@ -47,11 +47,11 @@ const R = PAD.RIGHT, L = PAD.LEFT;
 {
   // 叩いた後のブロックはもう何も出ない
   const w = makeWorld({ power: 0 });
-  w.level.question(6, 21, 'mushroom');
+  w.level.question(6, 21, 'light');
   w.player.xpos = 6 * 16;
   run(w, 30, (f) => [f < 10 ? B : 0]);
   run(w, 30, (f) => [f < 10 ? B : 0]);
-  assert.equal(w.actors.filter((a) => a.type === 'mushroom').length, 1);
+  assert.equal(w.actors.filter((a) => a.type === 'light').length, 1);
 }
 {
   // 小さい状態でダメージを受けるとミス：跳ね上がって落ち、終わるとやり直し

@@ -71,9 +71,9 @@ function render() {
   const camY = world.camera.y;
   const p = world.player;
   view.drawBackground(g, camX, camY);
-  // ブロックから出てくる途中のキノコはブロックの後ろ
+  // ブロックから出てくる途中の光の玉はブロックの後ろ
   for (const a of world.actors) {
-    if (a.type === 'mushroom' && a.emerge) actorSprites.drawActor(g, a, world.frame, a.x - camX, a.y - camY);
+    if (a.type === 'light' && a.emerge) actorSprites.drawActor(g, a, world.frame, a.x - camX, a.y - camY);
   }
   view.drawTiles(g, world.level, camX, camY, world.frame);
 
@@ -82,7 +82,7 @@ function render() {
   }
   for (const a of world.actors) {
     if (a.state === 'carried') continue; // 手前に描く
-    if (a.type === 'mushroom' && a.emerge) continue;
+    if (a.type === 'light' && a.emerge) continue;
     actorSprites.drawActor(g, a, world.frame, a.x - camX, a.y - camY);
   }
   // ダメージ後の無敵中は点滅
