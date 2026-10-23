@@ -21,12 +21,6 @@ export class Input {
     this.state = { hold1: 0, press1: 0, hold2: 0, press2: 0, start: false };
     this.prevStart = false;
     this.listeners = [];
-    // タッチ用の「つかむ」ラッチ：画面のボタンは Y を押したまま B を押すのが難しいので、
-    // Y を押して物を持ち上げたら、指を離しても持ち続ける。もう一度 Y を押すと離す（投げる/置く）。
-    this.carrying = false; // main.js が毎フレーム設定する
-    this.wasCarrying = false;
-    this.grabLatch = false;
-    this.prevTouchY = false;
 
     window.addEventListener('keydown', (e) => {
       const b = KEYMAP[e.code];
@@ -71,7 +65,11 @@ export class Input {
       if (!zone) return;
       e.preventDefault();
       try { root.setPointerCapture(e.pointerId); } catch { /* 古いブラウザ */ }
-      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, zone });
+      // 押し始めたボタンは、その指を離すまで押されたままにする。
+      // Y を押したまま親指を B へスライドすれば Y+B（持ったままジャンプ、ダッシュジャンプ）になる
+      const origin = new Set();
+      if (zone === 'buttons') this.buttonsAt(e.clientX, e.clientY, origin);
+      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, zone, origin });
       this.recalcTouch();
     });
     root.addEventListener('pointermove', (e) => {
@@ -94,7 +92,10 @@ export class Input {
     const t = new Set();
     for (const p of this.pointers.values()) {
       if (p.zone === 'dpad') this.dpadDirs(p.x, p.y, t);
-      else this.buttonsAt(p.x, p.y, t);
+      else {
+        this.buttonsAt(p.x, p.y, t);
+        for (const b of p.origin) t.add(b);
+      }
     }
     // 新しく押したボタン・方向に触覚フィードバック（押した感触の代わり）
     for (const k of t) if (!this.touch.has(k)) { haptic('light'); break; }
@@ -169,22 +170,6 @@ export class Input {
     if (s.has('x')) hold2 |= PAD2.X;
     // 左右同時押しは SMW 同様そのまま渡す（SNES 実機では起こりにくい）
     const st = this.state;
-    const touchY = this.touch.has('y') || this.touch.has('x');
-    if (this.carrying && !this.wasCarrying && touchY) this.grabLatch = true;
-    if (!this.carrying) this.grabLatch = false;
-    let forceRelease = false;
-    if (this.grabLatch && touchY && !this.prevTouchY) {
-      this.grabLatch = false;
-      forceRelease = true;
-    }
-    this.wasCarrying = this.carrying;
-    this.prevTouchY = touchY;
-    st.grab = forceRelease ? false : this.grabLatch || !!(hold1 & PAD.Y);
-    if (this.btnEls) {
-      for (const el of this.btnEls) {
-        if (el.dataset.btn === 'y') el.classList.toggle('held', this.grabLatch);
-      }
-    }
     st.press1 = hold1 & ~this.prevHold1;
     st.press2 = hold2 & ~this.prevHold2;
     st.hold1 = hold1;

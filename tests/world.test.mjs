@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { makeWorld, run, PAD, PAD2 } from './helpers.mjs';
 import { GROUND_Y, TILE } from '../js/level.js';
-import { GiftBox, Spiker } from '../js/actors.js';
+import { GiftBox, Shell, Spiker } from '../js/actors.js';
 
 const R = PAD.RIGHT, L = PAD.LEFT, Y = PAD.Y, B = PAD.B, U = PAD.UP;
 const STAND_Y = GROUND_Y - 0x20;
@@ -258,6 +258,94 @@ function setupGift() {
   run(w, 120);
   assert.equal(e.facing, 1, 'turned around');
 }
+// ---- 甲羅 ----
+{
+  // 蹴ると滑り、壁で跳ね返る（砕けない）
+  const w = makeWorld();
+  w.level.fill(14, 21, 1, 3, TILE.STONE);
+  const sh = new Shell(100, GROUND_Y - 16);
+  w.actors.push(sh);
+  w.player.xpos = 70;
+  let i = 0;
+  while (sh.state !== 'kicked' && i++ < 60) run(w, 1, () => [R]);
+  assert.equal(sh.state, 'kicked', 'kicked by touching');
+  assert.ok(sh.xs > 0);
+  run(w, 1, () => [0]);
+  w.player.xpos = 20; // 戻ってくる甲羅に当たらないよう離れる
+  let rebounded = false;
+  for (let f = 0; f < 120 && !rebounded; f++) {
+    run(w, 1, () => [0]);
+    if (sh.xs < 0) rebounded = true;
+  }
+  assert.ok(rebounded, 'rebounded off the wall');
+  assert.ok(!sh.dead, 'shell survives the wall');
+  assert.equal(sh.xs, -0x2e, 'same speed after rebound');
+}
+{
+  // 蹴られた甲羅に横から当たるとダメージ
+  const w = makeWorld();
+  const sh = new Shell(200, GROUND_Y - 16);
+  sh.state = 'kicked';
+  sh.xs = -0x2e;
+  w.actors.push(sh);
+  w.player.xpos = 100;
+  run(w, 60, () => [0]);
+  assert.ok(w.events.includes('hurt'), 'hurt by moving shell');
+}
+{
+  // 蹴られた甲羅を上から踏むと止まり、ルミナは跳ねる
+  const w = makeWorld();
+  const sh = new Shell(150, GROUND_Y - 16);
+  sh.state = 'kicked';
+  sh.xs = -0x2e;
+  w.actors.push(sh);
+  const p = w.player;
+  p.xpos = 120;
+  p.ypos = GROUND_Y - 0x20 - 30;
+  p.inAir = 0x24;
+  p.yspeed = 0x20;
+  let bounced = false;
+  for (let f = 0; f < 30 && !bounced; f++) {
+    const l = run(w, 1, () => [0])[0];
+    if (l.ys <= -40) bounced = true;
+  }
+  assert.ok(bounced, 'player bounced');
+  assert.equal(sh.state, 'idle', 'shell stopped being kicked');
+  // 横に逃げて、甲羅が止まるのを見る（真下に落ちるとまた蹴ってしまう）
+  run(w, 20, () => [L]);
+  assert.equal(sh.xs, 0, 'shell came to rest');
+  assert.equal(p.hurtTimer, 0);
+}
+{
+  // スピンジャンプで踏むと甲羅は消える
+  const w = makeWorld();
+  const sh = new Shell(150, GROUND_Y - 16);
+  w.actors.push(sh);
+  const p = w.player;
+  p.xpos = 148;
+  p.ypos = GROUND_Y - 0x20 - 30;
+  p.inAir = 0x24;
+  p.spin = 1;
+  p.yspeed = 0x20;
+  run(w, 20, () => [0]);
+  assert.ok(sh.dead, 'spin-killed');
+}
+{
+  // 持って投げると蹴られた甲羅になり、敵を倒す
+  const w = makeWorld();
+  const sh = new Shell(100, GROUND_Y - 16);
+  w.actors.push(sh);
+  const e = new Spiker(260, GROUND_Y - 16);
+  w.actors.push(e);
+  w.player.xpos = 70;
+  for (let i = 0; i < 60 && sh.state !== 'carried'; i++) run(w, 1, () => [R | Y]);
+  assert.equal(sh.state, 'carried');
+  run(w, 1, () => [R]);
+  assert.equal(sh.state, 'kicked');
+  run(w, 60, () => [0]);
+  assert.ok(e.dying || e.dead, 'enemy killed by shell');
+}
+
 // 出現・再出現
 {
   const w = makeWorld({ flat: false, spawns: true });

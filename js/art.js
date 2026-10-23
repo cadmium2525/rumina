@@ -10,6 +10,8 @@ export const PAL_OBJ = {
   W: '#faf8ec', v: '#c8c4dc', B: '#4470d0', b: '#284898',
   // トゲムシ
   P: '#5a2c8c', p: '#8a54c0', q: '#b488e0', L: '#fff0c8', l: '#d8b878', E: '#ffe060', R: '#c02848',
+  // 甲羅
+  T: '#3cb4a0', t: '#1f7468', u: '#9ae6d4',
 };
 
 export const TURN = [
@@ -149,4 +151,60 @@ export const STAR_B = [
   '..K..K..',
   '.K....K.',
   '........',
+];
+
+// 甲羅（SMW のノコノコの甲羅相当）。蹴られている間は 4 コマで回る
+export const SHELL_SIDE = [
+  '................',
+  '................',
+  '.....KKKKKK.....',
+  '...KKuuTTTTKK...',
+  '..KuuTTtTTTTTK..',
+  '.KuTTTtTTTtTTTK.',
+  '.KuTTtTTTTTtTTK.',
+  'KuTTTtTTTTTtTTTK',
+  'KTTTtTTTTTTTtTTK',
+  'KTttTTTTTTTTTttK',
+  'KtTTTTTTTTTTTTtK',
+  'KKKKKKKKKKKKKKKK',
+  'KLLLLLLLLLLLLLLK',
+  'KlLLLLLLLLLLLLlK',
+  '.KllllllllllllK.',
+  '..KKKKKKKKKKKK..',
+];
+export const SHELL_FRONT = [
+  '................',
+  '................',
+  '......KKKK......',
+  '....KKuTTTKK....',
+  '...KuTTtTTTtK...',
+  '...KuTTtTTTtK...',
+  '..KuTTTtTTTtTK..',
+  '..KuTTTtTTTtTK..',
+  '..KTTTTtTTTtTK..',
+  '..KTtTTtTTTttK..',
+  '..KttTTtTTTttK..',
+  '..KKKKKKKKKKKK..',
+  '..KLLLLLLLLLLK..',
+  '..KlLLLLLLLLlK..',
+  '...KllllllllK...',
+  '....KKKKKKKK....',
+];
+export const SHELL_EDGE = [
+  '................',
+  '................',
+  '.......KK.......',
+  '......KuTK......',
+  '.....KuTTtK.....',
+  '.....KuTTtK.....',
+  '.....KuTTtK.....',
+  '.....KTTTtK.....',
+  '.....KTTTtK.....',
+  '.....KtTTtK.....',
+  '.....KtTttK.....',
+  '.....KKKKKK.....',
+  '.....KLLLLK.....',
+  '.....KlLLlK.....',
+  '......KllK......',
+  '.......KK.......',
 ];

@@ -10,11 +10,6 @@ import {
 const u8 = (v) => v & 0xff;
 const s8 = (v) => ((v & 0xff) << 24) >> 24;
 
-// 「つかむ」ボタンが押されているか。タッチ操作ではラッチされることがある（input.js）
-export function grabHeld(pad) {
-  return pad.grab !== undefined ? pad.grab : !!(pad.hold1 & PAD.Y);
-}
-
 export function overlap(a, b) {
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 }
@@ -92,11 +87,10 @@ class Sprite {
   }
 }
 
-// 持ち運べるギフトボックス（SMW のスローブロック, sprite 0x53）
-export class GiftBox extends Sprite {
+// 持てる物の共通部分（SMW で status 9 気絶 / 10 蹴られ / 11 持たれ を使うスプライト）
+class Throwable extends Sprite {
   constructor(x, y) {
     super(x, y);
-    this.type = 'gift';
     this.state = 'idle'; // idle(=気絶, status 9) / kicked(10) / carried(11)
   }
 
@@ -134,7 +128,10 @@ export class GiftBox extends Sprite {
     if (!this.contactTimer && overlap(w.player.hitbox, this.hitbox)) {
       this.contactTimer = 8;
       const p = w.player;
-      if (grabHeld(p.in) && !p.carrying) {
+      if (this.spinKillable && p.spin && !(p.yspeed & 0x80)) {
+        // 01AA42：スピンジャンプで踏むと消える
+        this.spinKill(w);
+      } else if ((p.in.hold1 & PAD.Y) && !p.carrying) {
         // 持ち上げる (01AA42)
         this.state = 'carried';
         p.carrying = this;
@@ -150,7 +147,7 @@ export class GiftBox extends Sprite {
     }
   }
 
-  // SprStatus0A_Kicked (019913)：まっすぐ滑る。壁で砕ける
+  // SprStatus0A_Kicked (019913)：まっすぐ滑る。壁に当たると rebound()
   updateKicked(w) {
     if (this.xs) this.facing = this.xs < 0 ? 0 : 1;
     this.moveY();
@@ -170,24 +167,28 @@ export class GiftBox extends Sprite {
         w.emit('kick');
       }
     }
+    if (!this.contactTimer && overlap(w.player.hitbox, this.hitbox)) {
+      this.contactTimer = 8;
+      this.touchPlayerKicked(w);
+    }
   }
 
-  // MakeNormalSpriteReboundOffWall (01999E)：壁に当たってブロックを叩き、自分は砕ける
-  rebound(w, f) {
-    w.hitTile(f.tx, f.ty);
-    this.shatter(w);
-  }
+  // 蹴られて動いている時にプレイヤーが触れた（種類ごとに上書き）
+  touchPlayerKicked() {}
 
-  shatter(w) {
+  spinKill(w) {
+    const p = w.player;
+    p.yspeed = 0xf8; // -8
+    w.star(p.xpos + 4, p.ypos + 0x1c);
+    w.effects.push({ kind: 'smoke', x: this.x + 4, y: this.y + 4, t: 19 });
+    w.emit('bounce');
     this.dead = true;
-    w.addPieces(this.x, this.y, 'gift');
-    w.emit('shatter');
   }
 
   // SprStatus0B_Carried (019F71)
   updateCarried(w) {
     const p = w.player;
-    if (grabHeld(p.in)) {
+    if ((p.in.hold1 & PAD.Y)) {
       this.followPlayer(p);
       return;
     }
@@ -238,6 +239,65 @@ export class GiftBox extends Sprite {
     this.xs = 0;
     this.ys = 0;
     this.contactTimer = 16;
+  }
+}
+
+// 持ち運べるギフトボックス（SMW のスローブロック, sprite 0x53）。壁に当たると砕ける
+export class GiftBox extends Throwable {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'gift';
+  }
+
+  // MakeNormalSpriteReboundOffWall (01999E)：壁のブロックを叩き、自分は砕ける (BreakThrowBlock)
+  rebound(w, f) {
+    w.hitTile(f.tx, f.ty);
+    this.shatter(w);
+  }
+
+  shatter(w) {
+    this.dead = true;
+    w.addPieces(this.x, this.y, 'gift');
+    w.emit('shatter');
+  }
+}
+
+// 甲羅（SMW のノコノコの甲羅）。壁に当たると跳ね返る。蹴られている甲羅は敵を倒し、横から当たると痛い
+export class Shell extends Throwable {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'shell';
+    this.spinKillable = true;
+  }
+
+  get hitbox() { return { x: this.x + 1, y: this.y + 3, w: 14, h: 13 }; }
+
+  // MakeNormalSpriteReboundOffWall (01999E)：向きを反転し、壁のブロックを叩く
+  rebound(w, f) {
+    this.xs = -this.xs;
+    this.facing ^= 1;
+    w.hitTile(f.tx, f.ty);
+    w.emit('bump');
+  }
+
+  // CheckPlayerToNormalSpriteColl_01A80F：上から踏むと止まる（スピンなら消える）。横からはダメージ
+  touchPlayerKicked(w) {
+    const p = w.player;
+    const hb = this.hitbox;
+    const above = !(p.yspeed & 0x80) && p.ypos + 0x20 <= hb.y + 10;
+    if (above && p.spin) {
+      this.spinKill(w);
+      return;
+    }
+    if (above) {
+      p.boost(); // 01A8D8
+      w.star(p.xpos + 4, p.ypos + 0x1c);
+      w.emit('kick');
+      this.state = 'idle'; // 01AA0B：気絶状態に戻る（床で速度が半分ずつになり止まる）
+      return;
+    }
+    const dir = hb.x + 6 > p.xpos + 8 ? 1 : -1;
+    if (p.hurt(dir)) w.onPlayerHurt();
   }
 }
 

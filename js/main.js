@@ -38,7 +38,6 @@ function step() {
   }
   if (paused) return;
   world.step(pad);
-  input.carrying = !!world.player.carrying;
   for (const ev of world.events) {
     if (sfx[ev]) sfx[ev]();
     if (HAPTIC_OF[ev]) haptic(HAPTIC_OF[ev]);

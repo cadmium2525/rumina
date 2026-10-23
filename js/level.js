@@ -18,7 +18,7 @@ export class Level {
     this.tiles = new Uint8Array(TILES_W * TILES_H);
     this.widthPx = LEVEL_W;
     this.bounces = []; // {tx, ty, t}
-    this.spawns = [];  // {type: 'gift' | 'spiker', x, y}
+    this.spawns = [];  // {type: 'gift' | 'shell' | 'spiker', x, y}
     this.build();
   }
 
@@ -46,6 +46,8 @@ export class Level {
 
     const at = (tx, type, dy = 0) => this.spawns.push({ type, x: tx * 16, y: GROUND_Y - 16 + dy });
     at(12, 'gift');
+    at(20, 'shell');
+    at(44, 'shell');
     at(28, 'gift');
     at(52, 'gift');
     at(32, 'spiker');

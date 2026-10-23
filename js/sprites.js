@@ -1,7 +1,10 @@
 // ドット絵の読み込みとキャンバス化
 import { RUMINA_FRAMES_TEXT } from './rumina_frames.js';
 import { POSE } from './player.js';
-import { PAL_OBJ, GIFT, SPIKER_A, SPIKER_B, PIECE_GOLD, PIECE_GIFT, STAR_A, STAR_B } from './art.js';
+import {
+  PAL_OBJ, GIFT, SPIKER_A, SPIKER_B, PIECE_GOLD, PIECE_GIFT, STAR_A, STAR_B,
+  SHELL_SIDE, SHELL_FRONT, SHELL_EDGE,
+} from './art.js';
 
 export const PALETTE = {
   K: '#24141c', // 輪郭
@@ -109,11 +112,22 @@ export class ActorSprites {
     }));
     this.pieces = { gold: gridToCanvas(PIECE_GOLD, PAL_OBJ), gift: gridToCanvas(PIECE_GIFT, PAL_OBJ) };
     this.stars = [STAR_A, STAR_B].map((f) => gridToCanvas(f, PAL_OBJ));
+    // 蹴られた甲羅の回転：横 → 正面 → 真横 → 正面 (KickedShellDraw, 4 コマ)
+    const side = gridToCanvas(SHELL_SIDE, PAL_OBJ);
+    const front = gridToCanvas(SHELL_FRONT, PAL_OBJ);
+    const edge = gridToCanvas(SHELL_EDGE, PAL_OBJ);
+    this.shell = side;
+    this.shellSpin = [side, front, edge, front];
   }
 
   drawActor(g, a, frame, x, y) {
     if (a.type === 'gift') {
       g.drawImage(this.gift, x, y);
+      return;
+    }
+    if (a.type === 'shell') {
+      const img = a.state === 'kicked' ? this.shellSpin[(frame >> 2) & 3] : this.shell;
+      g.drawImage(img, x, y);
       return;
     }
     const img = this.spiker[(frame >> 3) & 1][a.facing ? 'right' : 'left'];
