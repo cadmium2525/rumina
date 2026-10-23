@@ -1,0 +1,99 @@
+:root {
+  --bg: #120a10;
+  --pad: rgba(255, 255, 255, 0.16);
+  --pad-on: rgba(255, 255, 255, 0.42);
+  --edge: rgba(255, 255, 255, 0.35);
+  --ink: #fff;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+  overflow: hidden; overscroll-behavior: none;
+  font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  touch-action: none;
+}
+#stage {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+}
+body.portrait #stage { align-items: flex-start; padding-top: env(safe-area-inset-top); }
+#screen {
+  image-rendering: pixelated; image-rendering: crisp-edges;
+  background: #000; display: block;
+}
+
+#topbar {
+  position: fixed; top: calc(6px + env(safe-area-inset-top)); right: calc(6px + env(safe-area-inset-right));
+  display: flex; gap: 6px; z-index: 5;
+}
+#topbar button {
+  width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--edge);
+  background: rgba(0, 0, 0, 0.35); color: #fff; font: bold 15px/1 system-ui; padding: 0;
+}
+#debug {
+  position: fixed; left: calc(6px + env(safe-area-inset-left)); top: calc(24px + env(safe-area-inset-top));
+  margin: 0; padding: 6px 8px; background: rgba(0, 0, 0, 0.6); border-radius: 6px;
+  font: 12px/1.4 ui-monospace, Menlo, monospace; z-index: 5; pointer-events: none;
+}
+
+/* ---- タッチパッド ---- */
+#touch { position: fixed; inset: 0; display: none; z-index: 4; }
+body.touch #touch { display: block; }
+.dpad {
+  position: absolute; width: 150px; height: 150px;
+  left: calc(18px + env(safe-area-inset-left)); bottom: calc(18px + env(safe-area-inset-bottom));
+}
+.dpad .arm, .dpad .hub { position: absolute; background: var(--pad); border: 1px solid var(--edge); }
+.dpad .hub { left: 50px; top: 50px; width: 50px; height: 50px; border: none; }
+.dpad .up    { left: 50px; top: 0; width: 50px; height: 51px; border-radius: 10px 10px 0 0; border-bottom: none; }
+.dpad .down  { left: 50px; bottom: 0; width: 50px; height: 51px; border-radius: 0 0 10px 10px; border-top: none; }
+.dpad .left  { top: 50px; left: 0; width: 51px; height: 50px; border-radius: 10px 0 0 10px; border-right: none; }
+.dpad .right { top: 50px; right: 0; width: 51px; height: 50px; border-radius: 0 10px 10px 0; border-left: none; }
+.dpad[data-dir~="up"] .up, .dpad[data-dir~="down"] .down,
+.dpad[data-dir~="left"] .left, .dpad[data-dir~="right"] .right { background: var(--pad-on); }
+
+.buttons {
+  position: absolute; width: 180px; height: 170px;
+  right: calc(14px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom));
+}
+.btn {
+  position: absolute; width: 62px; height: 62px; border-radius: 50%;
+  border: 2px solid var(--edge); background: var(--pad); color: rgba(255, 255, 255, 0.85);
+  font: bold 20px/1 system-ui; padding: 0; pointer-events: none;
+}
+.btn.on { background: var(--pad-on); transform: scale(0.94); }
+.btn.x { left: 59px; top: 0; }
+.btn.y { left: 0; top: 54px; }
+.btn.a { right: 0; top: 54px; }
+.btn.b { left: 59px; bottom: 0; }
+.btn.y, .btn.b { border-color: rgba(255, 230, 140, 0.6); }
+.start {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  border: 1px solid var(--edge); background: var(--pad); color: #fff; border-radius: 12px;
+  font: bold 11px/1 system-ui; padding: 6px 12px; pointer-events: none;
+}
+.start.on { background: var(--pad-on); }
+.dpad .arm, .dpad .hub { pointer-events: none; }
+
+body.portrait .dpad { width: 170px; height: 170px; bottom: calc(40px + env(safe-area-inset-bottom)); }
+body.portrait .dpad .hub { left: 57px; top: 57px; width: 56px; height: 56px; }
+body.portrait .dpad .up, body.portrait .dpad .down { left: 57px; width: 56px; height: 58px; }
+body.portrait .dpad .left, body.portrait .dpad .right { top: 57px; height: 56px; width: 58px; }
+body.portrait .buttons { bottom: calc(36px + env(safe-area-inset-bottom)); }
+
+/* ---- ヘルプ ---- */
+#help {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); z-index: 10;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+#help[hidden] { display: none; }
+#help .panel {
+  background: #2a1c2c; border: 2px solid #f6d480; border-radius: 12px; padding: 16px 20px;
+  max-width: 520px; width: 100%; max-height: 100%; overflow: auto; font-size: 14px; line-height: 1.6;
+}
+#help h1 { font-size: 18px; margin: 0 0 8px; color: #f6d480; }
+#help table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+#help th, #help td { text-align: left; padding: 3px 6px; border-bottom: 1px solid #4a3a4c; }
+#help th { color: #c8c4dc; font-weight: 600; }
+#help .close { text-align: center; color: #c8c4dc; margin: 4px 0 0; }
