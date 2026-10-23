@@ -1,5 +1,5 @@
 // オフライン用 Service Worker。ファイルを更新したら VERSION を上げる
-const VERSION = 'rumina-v11';
+const VERSION = 'rumina-v12';
 const ASSETS = [
   './', 'index.html', 'style.css', 'manifest.webmanifest',
   'js/main.js', 'js/player.js', 'js/smw_tables.js', 'js/sprites.js', 'js/rumina_frames.js',

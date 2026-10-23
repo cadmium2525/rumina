@@ -430,3 +430,26 @@ function setupGift() {
 }
 
 console.log('world: ok');
+{
+  // 置いた甲羅 (status 9)：空中にある間は敵を倒し、床の上では敵が向きを変えるだけ (01A4BA)
+  const w = makeWorld();
+  const sh = new Shell(160, GROUND_Y - 16 - 40);
+  w.actors.push(sh);
+  const e = new Spiker(160, GROUND_Y - 16);
+  w.actors.push(e);
+  w.player.xpos = 40;
+  run(w, 30, () => [0]);
+  assert.ok(e.dying || e.dead, 'shell falling from above kills');
+  const w2 = makeWorld();
+  const sh2 = new Shell(160, GROUND_Y - 16);
+  sh2.xs = 4;
+  w2.actors.push(sh2);
+  const e2 = new Spiker(180, GROUND_Y - 16);
+  e2.facing = 0;
+  w2.actors.push(e2);
+  w2.player.xpos = 40;
+  run(w2, 30, () => [0]);
+  assert.ok(!e2.dying && !e2.dead, 'shell on the floor does not kill');
+  assert.equal(e2.facing, 1, 'enemy turned away');
+  console.log('placed shell: ok');
+}

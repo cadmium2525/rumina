@@ -177,6 +177,17 @@ class Throwable extends Sprite {
       this.rebound(w, f);
       return;
     }
+    // 敵との接触 (01A4BA)：空中にある間は敵を倒す (sub_1A642 → 1A685/1A64A)。
+    // 床の上では倒さず、お互いに離れる向きへ向き直る (LABEL_41)
+    for (const a of w.actors) {
+      if (a.type !== 'spiker' || a.dead || a.dying || !overlap(this.hitbox, a.hitbox)) continue;
+      if (!this.onFloor) {
+        a.kill(this.xs < 0 ? -1 : 1);
+        w.emit('kick');
+      } else {
+        a.facing = a.x >= this.x ? 1 : 0;
+      }
+    }
     if (!this.contactTimer && touchesPlayer(w.player, this.hitbox)) {
       this.contactTimer = 8;
       const p = w.player;
