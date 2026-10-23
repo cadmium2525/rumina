@@ -192,7 +192,7 @@ class Throwable extends Sprite {
       this.followPlayer(p);
       return;
     }
-    // Y を離した：投げる / 置く / 真上に投げる (019FDC〜)
+    // Y を離した：投げる / ↓で置く / ↑で真上に投げる (019FDC〜)
     p.carrying = null;
     const h = p.in.hold1;
     this.contactTimer = 16;
@@ -202,8 +202,8 @@ class Throwable extends Sprite {
       this.ys = -0x70;
       this.xs = s8(p.xspeed) >> 1;
       w.emit('throw');
-    } else if (!(h & 3)) {
-      // 何も押していなければそっと置く
+    } else if (h & PAD.DOWN) {
+      // 下を押しながら離すとそっと置く（甲羅など sprite < 0x15 の規則）
       this.state = 'idle';
       this.x = p.xpos + PLACED_X_OFFSET[p.facing];
       this.xs = s8(p.xspeed) + s8(PLACED_X_SPEED[this.playerIsLeft(p) ? 1 : 0]);
@@ -225,8 +225,10 @@ class Throwable extends Sprite {
       v1 += 2;
       if (p.facePoseTimer >= 5) v1++;
     }
-    this.x = p.xpos + CARRIED_X_OFFSET[v1];
-    this.y = p.ypos + (p.ducking || p.pickPoseTimer ? 10 : 8);
+    // しゃがみ中・持ち上げ中は足元で抱える（SMW は +2px 下げる。ルミナの顔が隠れないよう少し前に出す）
+    const low = p.ducking || p.pickPoseTimer;
+    this.x = p.xpos + (low && v1 < 2 ? (v1 ? -15 : 15) : CARRIED_X_OFFSET[v1]);
+    this.y = p.ypos + (low ? 16 : 8);
     this.xs = 0;
     this.ys = 0;
     this.subX = 0;

@@ -171,15 +171,32 @@ function setupGift() {
   assert.ok(w.effects.some((e) => e.kind === 'piece'));
 }
 {
-  // 何も押さずに Y を離すとそっと置く（その場に残る）
+  // 何も押さずに Y を離しても投げる（SMW の甲羅と同じ）
   const { w, g } = setupGift();
   run(w, 40, () => [R | Y]);
-  run(w, 5, () => [Y]);
+  run(w, 60, () => [Y]); // 止まる
+  assert.equal(w.player.xspeed, 0);
   run(w, 1, () => [0]);
-  assert.equal(g.state, 'idle');
+  assert.equal(g.state, 'kicked', 'thrown without direction');
+  assert.equal(g.xs, 0x2e, 'thrown forward at shell speed');
+}
+{
+  // 持ったまま ↓ でしゃがむ。箱は足元で抱える
+  const { w, g } = setupGift();
+  run(w, 40, () => [R | Y]);
+  run(w, 60, () => [Y]);
+  run(w, 3, () => [Y | PAD.DOWN]);
+  const p = w.player;
+  assert.ok(p.ducking, 'ducking while carrying');
+  assert.equal(p.pose, 0x1d, 'duck-carry pose');
+  assert.equal(g.y, p.ypos + 16, 'box held low');
+  // ↓ を押しながら Y を離すとそっと置く（その場に残る）
+  run(w, 1, () => [PAD.DOWN]);
+  assert.equal(g.state, 'idle', 'placed');
   run(w, 60, () => [0]);
   assert.ok(!g.dead, 'placed box stays');
   assert.equal(g.y, GROUND_Y - 16);
+  assert.ok(Math.abs(g.xs) <= 1, 'resting');
 }
 {
   // ↑ を押しながら離すと真上に投げる

@@ -62,7 +62,7 @@ const POSE_FRAME = {
   [POSE.SKID]: 'skid', [POSE.DUCK]: 'duck',
   [POSE.FACE]: 'front', [POSE.FRONT]: 'front', [POSE.BACK]: 'back',
   [POSE.CARRY0]: 'carry', [POSE.CARRY1]: 'carry_walk1', [POSE.CARRY2]: 'carry_walk2',
-  [POSE.CARRY_UP]: 'carry', [POSE.PICKUP]: 'carry', [POSE.CARRY_JUMP]: 'carry_jump',
+  [POSE.CARRY_UP]: 'carry', [POSE.PICKUP]: 'duck_carry', [POSE.CARRY_JUMP]: 'carry_jump',
   [POSE.KICK]: 'kick',
 };
 
