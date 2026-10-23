@@ -191,9 +191,12 @@ export class Player {
       }
       const tx = Math.floor(fx / 16);
       const ty = Math.floor(fy / 16);
-      // 00EE3A：空中でスピンジャンプ中にターンブロックへ着地すると壊れる（止まらない）
+      // 00EE3A：空中でスピンジャンプ中にターンブロックへ着地すると壊れる（着地はしない）
+      // 壊したブロックの反動で少し跳ね返る (SpawnBounceSprite: player_yspeed = -48)。
+      // ジャンプボタンを押していると重力が弱いので、その分高く跳ぶ
       if (level.tileAt(tx, ty) === TILE.TURN && wasAir && this.spin) {
         this.env.breakTile(tx, ty);
+        this.yspeed = BOOST_NORMAL;
         this.airCheck();
         return;
       }

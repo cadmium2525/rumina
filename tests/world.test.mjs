@@ -44,13 +44,41 @@ const STAND_Y = GROUND_Y - 0x20;
   p.inAir = 0x24;
   p.spin = 1;
   p.yspeed = 0;
-  run(w, 60);
+  run(w, 150);
   assert.equal(w.level.tileAt(8, 21), TILE.EMPTY, 'top broken');
   assert.equal(w.level.tileAt(8, 22), TILE.EMPTY, 'middle broken');
   assert.equal(w.level.tileAt(8, 23), TILE.EMPTY, 'bottom broken');
   assert.equal(p.ypos, STAND_Y, 'fell to the ground');
   assert.ok(w.events.filter((e) => e === 'break').length === 3);
   assert.ok(w.effects.length >= 0);
+}
+// 壊した反動で跳ね返る。ジャンプボタンを押していると重力が弱いので高く跳ぶ
+{
+  const apex = (hold) => {
+    const w = makeWorld();
+    w.level.fill(8, 21, 1, 1, TILE.TURN);
+    const p = w.player;
+    p.xpos = 8 * 16;
+    p.ypos = 21 * 16 - 0x20 - 40;
+    p.inAir = 0x24;
+    p.spin = 1;
+    p.yspeed = 0;
+    let broke = false;
+    let top = Infinity;
+    let y0 = null;
+    for (let f = 0; f < 80; f++) {
+      const l = run(w, 1, () => [hold ? B : 0])[0];
+      if (!broke && w.events.includes('break')) { broke = true; y0 = l.y; }
+      if (broke) top = Math.min(top, l.y);
+    }
+    assert.ok(broke, 'broke');
+    return y0 - top;
+  };
+  const low = apex(false);
+  const high = apex(true);
+  console.log('break bounce height', low, high);
+  assert.ok(low >= 8 && low <= 16, `small bounce ${low}`);
+  assert.ok(high > low + 6, `higher with jump button ${high}`);
 }
 // スピンジャンプでなければ着地して壊れない
 {

@@ -10,6 +10,11 @@ import {
 const u8 = (v) => v & 0xff;
 const s8 = (v) => ((v & 0xff) << 24) >> 24;
 
+// 「つかむ」ボタンが押されているか。タッチ操作ではラッチされることがある（input.js）
+export function grabHeld(pad) {
+  return pad.grab !== undefined ? pad.grab : !!(pad.hold1 & PAD.Y);
+}
+
 export function overlap(a, b) {
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 }
@@ -129,7 +134,7 @@ export class GiftBox extends Sprite {
     if (!this.contactTimer && overlap(w.player.hitbox, this.hitbox)) {
       this.contactTimer = 8;
       const p = w.player;
-      if ((p.in.hold1 & PAD.Y) && !p.carrying) {
+      if (grabHeld(p.in) && !p.carrying) {
         // 持ち上げる (01AA42)
         this.state = 'carried';
         p.carrying = this;
@@ -182,7 +187,7 @@ export class GiftBox extends Sprite {
   // SprStatus0B_Carried (019F71)
   updateCarried(w) {
     const p = w.player;
-    if (p.in.hold1 & PAD.Y) {
+    if (grabHeld(p.in)) {
       this.followPlayer(p);
       return;
     }

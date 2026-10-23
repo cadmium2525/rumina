@@ -63,6 +63,7 @@ body.touch #touch { display: block; }
   font: bold 20px/1 system-ui; padding: 0; pointer-events: none;
 }
 .btn.on { background: var(--pad-on); transform: scale(0.94); }
+.btn.held { background: rgba(255, 220, 120, 0.5); border-color: #ffe08a; box-shadow: 0 0 10px rgba(255, 224, 138, 0.8); }
 .btn.x { left: 59px; top: 0; }
 .btn.y { left: 0; top: 54px; }
 .btn.a { right: 0; top: 54px; }
