@@ -21,17 +21,47 @@ const STAND_Y = GROUND_Y - 0x20;
   assert.ok(log.some((l) => l.y === 23 * 16 - 0x20 && l.x > 160 - 0xe), 'climbs on step and stands on it');
 }
 
-// ---- 頭突き：ターンブロックは跳ねるだけで壊れない ----
+// ---- 頭突き：クルクルブロック（叩くと回転してすり抜けられ、約 4.3 秒で戻る） ----
 {
   const w = makeWorld();
   w.level.fill(5, 20, 1, 1, TILE.TURN); // 地面から 3 タイル上
   w.player.xpos = 5 * 16;
-  const log = run(w, 40, (f) => [f >= 1 ? B : 0]);
-  assert.equal(w.level.tileAt(5, 20), TILE.TURN, 'still there');
-  assert.ok(w.events.includes('bump'), 'bump event');
+  let hitFrame = -1;
+  const log = [];
+  for (let f = 0; f < 40; f++) {
+    log.push(run(w, 1, () => [f >= 1 ? B : 0])[0]);
+    if (hitFrame < 0 && w.events.includes('bump')) hitFrame = f;
+  }
+  assert.ok(hitFrame >= 0, 'bump event');
   // 頭が天井で止まった（頭の判定点 y+3 がブロック下端の中）
   const minY = Math.min(...log.map((l) => l.y));
   assert.ok(minY + 3 <= 21 * 16 - 1 && minY + 3 >= 21 * 16 - 8, `head stopped at ${minY}`);
+  // 跳ね終わると回転を始める（壊れはしない）
+  assert.equal(w.level.tileAt(5, 20), TILE.SPIN, 'spinning');
+  assert.ok(!w.level.solidPx(5 * 16 + 8, 20 * 16 + 8), 'spinning block is passable');
+  // 回っている間にもう一度跳ぶと、すり抜けて上に出られる
+  run(w, 30, () => [0]);
+  const log2 = run(w, 50, (f) => [f >= 1 ? B : 0]);
+  assert.ok(Math.min(...log2.map((l) => l.y)) < 20 * 16 - 0x10, 'jumped through the spinning block');
+  // 叩いてから 256 フレームで元に戻る
+  run(w, 256 - (40 - hitFrame) - 80 - 2, () => [0]);
+  assert.equal(w.level.tileAt(5, 20), TILE.SPIN, 'still spinning just before');
+  run(w, 4, () => [0]);
+  assert.equal(w.level.tileAt(5, 20), TILE.TURN, 'back to a solid block');
+}
+// 回転中のブロックはスピンジャンプでも壊れない（すり抜ける）。蹴った甲羅が横から当たっても回る
+{
+  const w = makeWorld();
+  w.level.fill(14, 23, 1, 1, TILE.TURN);
+  const sh = new Shell(100, GROUND_Y - 16);
+  sh.state = 'kicked';
+  sh.xs = 0x2e;
+  w.actors.push(sh);
+  w.player.xpos = 20;
+  for (let i = 0; i < 60 && sh.xs > 0; i++) run(w, 1, () => [0]);
+  assert.ok(sh.xs < 0, 'shell rebounded off the turn block');
+  run(w, 10, () => [0]);
+  assert.equal(w.level.tileAt(14, 23), TILE.SPIN, 'shell made it spin');
 }
 
 // ---- スピンジャンプでターンブロックの柱を壊しながら落ちる ----

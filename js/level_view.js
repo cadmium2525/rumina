@@ -81,8 +81,21 @@ export class LevelView {
     this.cloud = gridToCanvas(CLOUD, CLOUD_PAL);
     this.post = gridToCanvas(POST, TILE_PAL);
     this.turn = gridToCanvas(TURN, PAL_OBJ);
+    // 回転中のターンブロック：正面 → 細い → 真横 → 細い（4 フレームごと）
+    this.turnSpin = [16, 10, 4, 10].map((w) => this.squeeze(this.turn, w));
     this.stone = gridToCanvas(STONE, PAL_OBJ);
     this.hills = this.makeHills();
+  }
+
+  // 横幅を縮めた絵（回転して見せる用）
+  squeeze(img, w) {
+    const c = document.createElement('canvas');
+    c.width = 16;
+    c.height = 16;
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    g.drawImage(img, (16 - w) >> 1, 0, w, 16);
+    return c;
   }
 
   makeHills() {
@@ -139,7 +152,8 @@ export class LevelView {
     }
   }
 
-  drawTiles(g, level, camX, camY) {
+  drawTiles(g, level, camX, camY, frame = 0) {
+    this.frame = frame;
     const sx = Math.floor(camX);
     const tx0 = Math.floor(sx / 16);
     const ty0 = Math.max(0, Math.floor(camY / 16));
@@ -151,6 +165,7 @@ export class LevelView {
         let img;
         if (t === TILE.GROUND) img = level.tileAt(tx, ty - 1) === TILE.EMPTY ? this.grass : this.dirt;
         else if (t === TILE.STONE) img = this.stone;
+        else if (t === TILE.SPIN) img = this.turnSpin[(this.frame >> 2) & 3];
         else img = this.turn;
         g.drawImage(img, tx * 16 - sx, ty * 16 - camY + level.bounceOffset(tx, ty));
       }

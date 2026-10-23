@@ -8,16 +8,20 @@ export const LEVEL_H = TILES_H * 16; // 432
 export const GROUND_Y = 384; // 地面の上端
 export const CAM_Y = LEVEL_H - SCREEN_H;
 
-export const TILE = { EMPTY: 0, GROUND: 1, STONE: 2, TURN: 3 };
+export const TILE = { EMPTY: 0, GROUND: 1, STONE: 2, TURN: 3, SPIN: 4 };
+const SOLID = [false, true, true, true, false];
 
-// ターンブロックを下から叩いたときの跳ね上がり（px、毎フレーム）
-const BOUNCE_OFFSETS = [-2, -4, -6, -7, -6, -4, -2, 0];
+// ターンブロックを叩いたときの跳ね上がり（px、毎フレーム）。
+// BounceSpr07_SpinningTurnBlock：初速 -64、加速 +0x13 で 8 フレーム
+const BOUNCE_OFFSETS = [-4, -7, -8, -9, -8, -6, -3, 0];
+// 叩かれてから元のブロックに戻るまで（bounce_spr07_spinning_turn_block_despawn_timer = 0xFF）
+const SPIN_TIME = 256;
 
 export class Level {
   constructor() {
     this.tiles = new Uint8Array(TILES_W * TILES_H);
     this.widthPx = LEVEL_W;
-    this.bounces = []; // {tx, ty, t}
+    this.bounces = []; // 叩かれたターンブロック {tx, ty, t}
     this.spawns = [];  // {type: 'gift' | 'shell' | 'spiker', x, y}
     this.build();
   }
@@ -67,7 +71,7 @@ export class Level {
 
   tileAtPx(x, y) { return this.tileAt(Math.floor(x / 16), Math.floor(y / 16)); }
 
-  solidPx(x, y) { return this.tileAtPx(x, y) !== TILE.EMPTY; }
+  solidPx(x, y) { return SOLID[this.tileAtPx(x, y)]; }
 
   // スピンジャンプなどでターンブロックを壊す。壊れたら true
   breakTurn(tx, ty) {
@@ -76,7 +80,8 @@ export class Level {
     return true;
   }
 
-  // ターンブロックが叩かれて跳ねる（見た目だけ）
+  // ターンブロックが下や横から叩かれた（クルクルブロック）。
+  // 8 フレーム跳ねたあと回転を始め、回っている間はすり抜けられる。約 4.3 秒で元に戻る
   bounceTile(tx, ty) {
     if (this.tileAt(tx, ty) !== TILE.TURN) return;
     if (this.bounces.some((b) => b.tx === tx && b.ty === ty)) return;
@@ -85,12 +90,18 @@ export class Level {
 
   bounceOffset(tx, ty) {
     const b = this.bounces.find((e) => e.tx === tx && e.ty === ty);
-    return b ? BOUNCE_OFFSETS[b.t] : 0;
+    return b && b.t < BOUNCE_OFFSETS.length ? BOUNCE_OFFSETS[b.t] : 0;
   }
 
   update() {
-    for (const b of this.bounces) b.t++;
-    this.bounces = this.bounces.filter((b) => b.t < BOUNCE_OFFSETS.length);
+    for (const b of this.bounces) {
+      b.t++;
+      // 跳ね終わったら回転するブロック（すり抜けられる）になる
+      if (b.t === BOUNCE_OFFSETS.length && this.tileAt(b.tx, b.ty) === TILE.TURN) this.set(b.tx, b.ty, TILE.SPIN);
+      // 時間が来たら、ルミナが中にいても元のブロックに戻る
+      if (b.t >= SPIN_TIME && this.tileAt(b.tx, b.ty) === TILE.SPIN) this.set(b.tx, b.ty, TILE.TURN);
+    }
+    this.bounces = this.bounces.filter((b) => b.t < SPIN_TIME);
   }
 }
 

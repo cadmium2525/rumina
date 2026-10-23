@@ -69,7 +69,7 @@ function render() {
   const camY = world.camera.y;
   const p = world.player;
   view.drawBackground(g, camX, camY);
-  view.drawTiles(g, world.level, camX, camY);
+  view.drawTiles(g, world.level, camX, camY, world.frame);
 
   for (const e of world.effects) {
     if (e.kind === 'smoke') smokeSprites.draw(g, e.t, e.x - camX, e.y - camY);
