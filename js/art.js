@@ -12,6 +12,8 @@ export const PAL_OBJ = {
   P: '#5a2c8c', p: '#8a54c0', q: '#b488e0', L: '#fff0c8', l: '#d8b878', E: '#ffe060', R: '#c02848',
   // 甲羅
   T: '#3cb4a0', t: '#1f7468', u: '#9ae6d4',
+  // ？ブロック・キノコ
+  Q: '#f8a830', n: '#7a4a20', N: '#b07838', r: '#f05050', m: '#a82838',
 };
 
 export const TURN = [
@@ -207,4 +209,61 @@ export const SHELL_EDGE = [
   '.....KlLLlK.....',
   '......KllK......',
   '.......KK.......',
+];
+
+export const QUESTION = [
+  '.KKKKKKKKKKKKKK.',
+  'KyyyyyyyyyyyyyyK',
+  'KyYYYYYYYYYYYYoK',
+  'KyYYYYKKKKYYYYoK',
+  'KyYYYKWWWWKYYYoK',
+  'KyYYKWWKKWWKYYoK',
+  'KyYYKKKYKWWKYYoK',
+  'KyYYYYYYKWWKYYoK',
+  'KyYYYYYKWWKYYYoK',
+  'KyYYYYYKWWKYYYoK',
+  'KyYYYYYYKKYYYYoK',
+  'KyYYYYYKWWKYYYoK',
+  'KyYYYYYKWWKYYYoK',
+  'KyYYYYYYKKYYYYoK',
+  'KoooooooooooooooK',
+  '.KKKKKKKKKKKKKK.',
+].map((r) => r.slice(0, 16));
+
+export const USED = [
+  '.KKKKKKKKKKKKKK.',
+  'KNNNNNNNNNNNNNNK',
+  'KNnNNNNNNNNNNnnK',
+  'KNNNNNNNNNNNNNnK',
+  'KNNNNNNNNNNNNNnK',
+  'KNNNNNNNNNNNNNnK',
+  'KNNNNNNNNNNNNNnK',
+  'KNNNNNNNNNNNNNnK',
+  'KNNNNNNNNNNNNNnK',
+  'KNNNNNNNNNNNNNnK',
+  'KNNNNNNNNNNNNNnK',
+  'KNNNNNNNNNNNNNnK',
+  'KNNNNNNNNNNNNNnK',
+  'KNnNNNNNNNNNNnnK',
+  'KnnnnnnnnnnnnnnK',
+  '.KKKKKKKKKKKKKK.',
+];
+
+export const MUSHROOM = [
+  '.....KKKKKK.....',
+  '...KKrrWWrrKK...',
+  '..KrrrWWWWrrrK..',
+  '.KrrrrWWWWrrrrK.',
+  '.KWWrrrWWrrrWWK.',
+  'KWWWWrrrrrrWWWWK',
+  'KWWWWrrrrrrWWWWK',
+  'KrWWrrrrrrrrWWrK',
+  'KrrrrmmmmmmrrrrK',
+  '.KmmKKKKKKKKmmK.',
+  '..KKLLKLLKLLKK..',
+  '...KLLKLLKLLK...',
+  '...KLLLLLLLLK...',
+  '...KLLLLLLLLK...',
+  '....KlLLLLlK....',
+  '.....KKKKKK.....',
 ];

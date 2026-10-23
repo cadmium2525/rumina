@@ -70,8 +70,8 @@ export const ANIM_SPEED = [
   0x4, 0x3, 0x2, 0x1, 0x1, 0x1, 0x1, 0x1, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2, 0x2,
 ];
 
-// 歩きフレーム数-1 (00CEB1 付近 WalkingPoseCount)。大きい状態 = 2
-export const WALK_POSE_COUNT = 2;
+// 歩きフレーム数-1 (kSetPlayerPose_WalkingPoseCount)。index = パワーアップ（0=小さい 1=大きい）
+export const WALK_POSE_COUNT = [1, 2, 2, 2];
 
 // スピンジャンプのポーズ (00CE99/00CEA1)。大きい状態の奇数 index を使用
 export const SPIN_POSES = [0x00, 0x00, 0x25, 0x44, 0x00, 0x00, 0x0f, 0x45];
@@ -191,3 +191,11 @@ export const CLIMB_SPEED = [0x10, 0x08, 0xf0, 0xf8];
 // ツタから飛び降りる速度。index = 水中(0/1)
 export const JUMP_FROM_VINE = [0xb0, 0xf0];
 export const CLIMB_POSE = 0x15;
+
+// ---- パワーアップ・ダメージ・ミス ----
+// 大きくなる/縮む時のポーズ (kPlayerStateXX_PowerupAnims_GrowingAniImgs)。0=今の大きさ 0x3D=中くらい 0x46=大きい
+export const GROW_IMAGES = [0x00, 0x3d, 0x00, 0x3d, 0x00, 0x3d, 0x46, 0x3d, 0x46, 0x3d, 0x46, 0x3d];
+export const GROW_TIME = 0x2f;   // 47 フレーム（その間ゲームが止まる）
+export const DEATH_TIME = 0x30;  // ミスの演出 (DamagePlayer_PitFall)。4 フレームに 1 減る
+export const DEATH_YSPEED = 0x90; // やられた時に跳ねる速さ (DamagePlayer_Kill: -112)
+export const DEATH_POSE = 0x3e;

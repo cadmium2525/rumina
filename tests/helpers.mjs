@@ -6,8 +6,10 @@ import { GROUND_Y, TILES_W, TILES_H, TILE } from '../js/level.js';
 export { PAD, PAD2 };
 
 // flat: 地面だけの平坦なステージにする / spawns: ステージ上の敵・アイテムを出す
-export function makeWorld({ spawns = false, flat = true } = {}) {
+// power: 0=小さい 1=大きい（既存のテストは大きい状態が前提）
+export function makeWorld({ spawns = false, flat = true, power = 1 } = {}) {
   const w = new World();
+  w.player.powerUp = power;
   if (flat) {
     const lv = w.level;
     lv.tiles.fill(0);

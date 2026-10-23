@@ -8,13 +8,16 @@ import {
   SLOPE_SHAPE, SLOPE_TYPE, SLOPE_PLAYER, SLOPE_STATIONARY_YSPEED, SLOPE_TOWARDS_PEAK_YSPEED,
   SLOPE_SNAP, SLOPE_FLAT, SLIDE_START,
   SWIM_POSES, SWIM_YSPEED, WATER_JUMP_OUT, CLIMB_SPEED, JUMP_FROM_VINE, CLIMB_POSE,
+  GROW_IMAGES, GROW_TIME, DEATH_TIME, DEATH_YSPEED, DEATH_POSE,
 } from './smw_tables.js';
-import { TILE, isSlope, slopeK } from './level.js';
+import { TILE, isSlope, slopeK, isCeilingSlope } from './level.js';
 
 const u8 = (v) => v & 0xff;
 const s8 = (v) => ((v & 0xff) << 24) >> 24;
 const u16 = (v) => v & 0xffff;
+const s16 = (v) => (v << 16) >> 16;
 const abs8 = (v) => (v & 0x80 ? u8(-v) : u8(v));
+const isFloorSlope = (t) => isSlope(t) && !isCeilingSlope(t);
 
 // コントローラビット（SMW の $15/$16 と $17/$18 と同じ並び）
 export const PAD = {
@@ -35,8 +38,11 @@ export const POSE = {
   CLIMB: 0x15, SWIM_A: 0x16, SWIM_A_CARRY: 0x17, SWIM: 0x18, SWIM_CARRY: 0x19,
   SWIM_B: 0x1a, SWIM_B_CARRY: 0x1b, SLIDE: 0x1c,
   PICKUP: 0x1d, CARRY_JUMP: 0x1e,
-  FALL: AIR_FALL, DUCK: 0x3c, BACK: 0x44, FRONT: 0x45,
+  FALL: AIR_FALL, DUCK: 0x3c, MEDIUM: 0x3d, DEAD: DEATH_POSE, BACK: 0x44, FRONT: 0x45, BIG_STAND: 0x46,
 };
+
+// プレイヤーの状態 ($71)
+export const STATE = { NORMAL: 0, POWER_DOWN: 1, GROW: 2, DEATH: 9 };
 
 export const HURT_TIME = 0x7f;
 
@@ -52,6 +58,10 @@ export class Player {
     this.inAir = 0;
     this.spin = 0;
     this.facing = 1;        // 0=左 1=右
+    this.powerUp = 0;       // 0=小さい（チビルミナ） 1=大きい ($19)
+    this.state = STATE.NORMAL; // $71
+    this.locked = 0;        // ゲームが止まっている（縮む・大きくなる・ミスの演出中, flag_sprites_locked）
+    this.dead = 0;          // ミスの演出が終わった（ステージをやり直す）
     this.ducking = 0;
     this.pmeter = 0;
     this.turning = 0;
@@ -85,9 +95,12 @@ export class Player {
   get xspeed16() { return (this.xspeed << 8) | this.subXspeed; }
   set xspeed16(v) { v = u16(v); this.xspeed = v >> 8; this.subXspeed = v & 0xff; }
 
+  // 小さい当たり判定を使うか（小さい状態かしゃがみ）
+  get small() { return !this.powerUp || this.ducking; }
+
   // 当たり判定の矩形（スプライトとの接触用）
   get hitbox() {
-    const top = this.ypos + (this.ducking ? 0x14 : 0x06);
+    const top = this.ypos + (this.small ? 0x14 : 0x06);
     return { x: this.xpos + 2, y: top, w: 12, h: this.ypos + 0x20 - top };
   }
 
@@ -96,7 +109,11 @@ export class Player {
   update(input, env) {
     this.in = input;
     this.env = env;
-    // タイマー減算 (00C47E 内のループ)
+    if (this.state !== STATE.NORMAL) {
+      this.powerAnim();
+      return;
+    }
+    // タイマー減算 (00C47E 内のループ。ゲームが止まっている間は減らない)
     if (this.animTimer) this.animTimer--;
     if (this.runTakeoffTimer) this.runTakeoffTimer--;
     if (this.slideTurnTimer) this.slideTurnTimer--;
@@ -111,6 +128,8 @@ export class Player {
     if ((this.yspeed & 0x80) && (this.blocked & 8)) this.yspeed = 0;
     this.updatePosition();
     this.levelCollision();
+    this.pitCheck();
+    if (this.state !== STATE.NORMAL) return;
     // 00CD39
     this.turning = 0;
     const h = input.hold1;
@@ -126,6 +145,86 @@ export class Player {
       this.handleInAir();
       this.setPose();
     }
+  }
+
+  // 縮む・大きくなる・ミスの演出（PlayerStateXX_PowerupAnims / PlayerState09_Death）
+  powerAnim() {
+    if (this.state === STATE.POWER_DOWN) {
+      // 00D129
+      if (this.animTimer) {
+        this.pose = GROW_IMAGES[this.animTimer >> 2];
+        this.animTimer--;
+      } else {
+        this.hurtTimer = HURT_TIME;
+        this.state = STATE.NORMAL;
+        this.locked = 0;
+      }
+    } else if (this.state === STATE.GROW) {
+      // 00D147
+      if (this.animTimer) {
+        this.pose = GROW_IMAGES[11 - (this.animTimer >> 2)];
+        this.animTimer--;
+      } else {
+        this.powerUp++;
+        this.state = STATE.NORMAL;
+        this.locked = 0;
+      }
+    } else if (this.state === STATE.DEATH) {
+      // 00D0B6
+      this.powerUp = 0;
+      this.pose = POSE.DEAD;
+      if ((this.env.frame & 3) === 0) this.animTimer = u8(this.animTimer - 1);
+      if (!this.animTimer) {
+        this.dead = 1;
+        return;
+      }
+      if (this.animTimer < 0x26) {
+        this.xspeed = 0;
+        this.updatePosition();
+        // HandlePlayerPhysics_D930(0)
+        let v = this.yspeed;
+        if (!(this.yspeed & 0x80) && this.yspeed >= MAX_FALL[0]) v = MAX_FALL[0];
+        this.yspeed = u8(GRAVITY[0] + v);
+        this.facing = (this.env.frame & 4) ? 1 : 0;
+      }
+    }
+  }
+
+  // ゲームを止めて演出を始める (DamagePlayer_SetHurtAnimationTimer)
+  startState(state, time) {
+    this.state = state;
+    this.animTimer = time;
+    this.locked = time;
+  }
+
+  // 穴に落ちた (00F595)
+  pitCheck() {
+    const camY = this.env.camY ?? 0;
+    if (s16(camY - 128 - this.ypos) >= 0) this.ypos = u16(camY - 128);
+    if (s16(this.ypos - camY) >= 256) this.pitFall();
+  }
+
+  // DamagePlayer_PitFall (00F60A)
+  pitFall() {
+    this.spin = 0;
+    this.startState(STATE.DEATH, DEATH_TIME);
+    this.env.emit('die');
+  }
+
+  // DamagePlayer_Kill (00F606)
+  kill() {
+    this.yspeed = DEATH_YSPEED;
+    this.pitFall();
+  }
+
+  // キノコを取った (SprXXX_PowerUps_01C538)。小さければ大きくなる
+  giveMushroom() {
+    if (this.powerUp) {
+      this.env.emit('powerup');
+      return;
+    }
+    this.startState(STATE.GROW, GROW_TIME);
+    this.env.emit('grow');
   }
 
   // UpdatePlayerSpritePosition (00DC2D)
@@ -213,7 +312,7 @@ export class Player {
   tileCollision(temp8d) {
     const { level } = this.env;
     const wasAir = this.inAir; // temp8f
-    const duck = this.ducking;
+    const duck = this.small; // 小さい状態としゃがみは同じ判定点
     const center = duck ? 0x18 : 0x12;
     const sideLo = 0x1a;
     const sideHi = duck ? 0x16 : 0x0f;
@@ -246,11 +345,29 @@ export class Player {
     // 頭 (00EC4E 付近)
     const hx = x + 8;
     const hy = y + headOff;
-    if (!level.solidPx(hx, hy)) {
-      this.touchTile(level.tileAtPx(hx, hy), 2);
+    const ht = level.tileAtPx(hx, hy);
+    const below = level.tileAtPx(hx, hy + 16);
+    if (isCeilingSlope(ht) || (level.solidPx(hx, hy) && isCeilingSlope(below))) {
+      // 天井の坂（形の値が負）。坂の真上のブロックにいる時は下の坂として扱う（SMW の D8〜 のタイル）
+      const k = isCeilingSlope(ht) ? slopeK(ht) : slopeK(below);
+      const p = (hy & 0xf) - (isCeilingSlope(ht) ? 0 : 16);
+      const v15 = p + s8(SLOPE_SHAPE[16 * k + (hx & 0xf)]);
+      if (v15 < 0) {
+        // LABEL_62
+        if (u8(v15) >= 0xf9 || this.inAir) {
+          if (this.inAir) this.ypos = u16(this.ypos + u8(~v15));
+          this.blocked |= 8;
+        } else {
+          this.blocked = (this.blocked & 0xf4) | 9;
+          this.xspeed = 0;
+        }
+        if (this.yspeed & 0x80) this.yspeed = 0;
+      }
+    } else if (!level.solidPx(hx, hy)) {
+      this.touchTile(ht, 2);
     } else {
       const p = hy & 0xf;
-      if (level.tileAtPx(hx, hy) !== TILE.TURN) {
+      if (ht !== TILE.TURN) {
         if (this.inAir || p >= 9) {
           if (this.inAir) this.ypos = u16(this.ypos + (15 - p));
           this.blocked |= 8;
@@ -272,10 +389,10 @@ export class Player {
     const f2 = hd ? x + 5 : x + 0xb;
     const t1 = level.tileAtPx(f1, fy);
     const above1 = level.tileAtPx(f1, fy - 16);
-    if (isSlope(t1) || (level.floorPx(f1, fy) && isSlope(above1))) {
+    if (isFloorSlope(t1) || (level.floorPx(f1, fy) && isFloorSlope(above1))) {
       // 坂。坂の真下の地面にいる時は、上の坂のタイルとして扱う（SMW の D8〜 のタイル）
-      const k = isSlope(t1) ? slopeK(t1) : slopeK(above1);
-      const yib = (fy & 0xf) + (isSlope(t1) ? 0 : 16);
+      const k = isFloorSlope(t1) ? slopeK(t1) : slopeK(above1);
+      const yib = (fy & 0xf) + (isFloorSlope(t1) ? 0 : 16);
       const xin = ((x & 0xf) + 8) & 0xf;
       const v22 = u8(yib - SLOPE_SHAPE[16 * k + xin]);
       if (v22 & 0x80) this.onGround++;
@@ -296,7 +413,7 @@ export class Player {
       this.touchTile(t1, 4);
     }
     // 2 つ目の足：ふつうのブロックだけ（坂・坂の下の地面は見ない）
-    if (level.floorPx(f2, fy) && !isSlope(level.tileAtPx(f2, fy - 16))) {
+    if (level.floorPx(f2, fy) && !isFloorSlope(level.tileAtPx(f2, fy - 16))) {
       this.landOnBlock(f2, fy, wasAir);
       return;
     }
@@ -325,9 +442,9 @@ export class Player {
     }
     const tx = Math.floor(fx / 16);
     const ty = Math.floor(fy / 16);
-    // 00EE3A：空中でスピンジャンプ中にターンブロックへ着地すると壊れる（着地はしない）
+    // 00EE3A：大きい状態で、空中でスピンジャンプ中にターンブロックへ着地すると壊れる（着地はしない）
     // 壊したブロックの反動で少し跳ね返る (SpawnBounceSprite: player_yspeed = -48)
-    if (level.tileAt(tx, ty) === TILE.TURN && wasAir && this.spin) {
+    if (level.tileAt(tx, ty) === TILE.TURN && wasAir && this.powerUp && this.spin) {
       this.env.breakTile(tx, ty);
       this.yspeed = BOOST_NORMAL;
       this.airCheck();
@@ -667,12 +784,17 @@ export class Player {
     this.yspeed = (this.in.hold1 & PAD.B) ? BOOST_HOLD_B : BOOST_NORMAL;
   }
 
-  // ダメージ (DamagePlayer_Hurt, 00F5B7)。受けたら true（無敵中は false）。
-  // SMW にノックバックは無い。速度はそのままで、一定時間無敵になって点滅する。
-  // （SMW では大きい状態だと縮むが、ルミナは今のところ縮まない）
+  // ダメージ (DamagePlayer_Hurt, 00F5B7)。受けたら true（無敵中・演出中は false）。
+  // SMW にノックバックは無い。大きければ縮み（ゲームが止まり、終わると無敵になって点滅）、小さければミス。
   hurt() {
-    if (this.hurtTimer) return false;
-    this.hurtTimer = HURT_TIME;
+    if (this.state !== STATE.NORMAL || this.hurtTimer) return false;
+    if (this.powerUp) {
+      this.powerUp = 0;
+      this.startState(STATE.POWER_DOWN, GROW_TIME);
+      this.env.emit('shrink');
+    } else {
+      this.kill();
+    }
     return true;
   }
 
@@ -719,7 +841,7 @@ export class Player {
       frame = this.walkFrame;
       if (!this.animTimer) {
         frame = this.walkFrame - 1;
-        if (frame < 0) frame = WALK_POSE_COUNT;
+        if (frame < 0) frame = WALK_POSE_COUNT[this.powerUp];
         this.animTimer = ANIM_SPEED[this.animSpeedIndex | (a >> 3)];
       }
     }

@@ -283,7 +283,7 @@ function setupGift() {
   p.inAir = 0x24;
   p.yspeed = 0x10;
   run(w, 40, () => [0]);
-  assert.ok(p.hurtTimer > 0 || w.events.includes('hurt'), 'hurt');
+  assert.ok(p.hurtTimer > 0 || w.events.includes('shrink'), 'hurt');
 }
 {
   // 横から触れてもダメージ
@@ -292,7 +292,7 @@ function setupGift() {
   w.actors.push(e);
   w.player.xpos = 90;
   run(w, 60, () => [R]);
-  assert.ok(w.events.includes('hurt'), 'hurt from the side');
+  assert.ok(w.events.includes('shrink'), 'hurt from the side');
 }
 {
   // 飛んできたブロックで倒される
@@ -353,10 +353,17 @@ function setupGift() {
   let hurtAt = -1;
   for (let f = 0; f < 60 && hurtAt < 0; f++) {
     run(w, 1, () => [R]);
-    if (w.events.includes('hurt')) hurtAt = f;
+    if (w.events.includes('shrink')) hurtAt = f;
   }
   assert.ok(hurtAt >= 0, 'hurt by moving shell');
   const p = w.player;
+  // 縮む演出の間（47 フレーム）はゲームが止まり、終わると無敵になる
+  assert.equal(p.state, 1, 'power down animation');
+  const xs0 = p.xpos;
+  run(w, 48, () => [R]);
+  assert.equal(p.xpos, xs0, 'frozen while shrinking');
+  assert.equal(p.powerUp, 0, 'became small');
+  assert.equal(p.state, 0);
   assert.ok(p.hurtTimer > 0, 'invincible after hurt');
   assert.ok(((p.xspeed << 24) >> 24) > 0, 'keeps walking forward (no knockback)');
   assert.equal(p.inAir, 0, 'not knocked into the air');

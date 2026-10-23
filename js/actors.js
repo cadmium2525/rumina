@@ -1,6 +1,6 @@
 // ブロック・敵などのスプライト。SMW のスプライト処理（bank 01）を移植している。
 // 速度は 1/16 px/frame、座標は 1px 単位（左上）。DOM に依存しない。
-import { LEVEL_H, SCREEN_W, TILE, isSlope, slopeK } from './level.js';
+import { LEVEL_H, SCREEN_W, TILE, isSlope, slopeK, isCeilingSlope } from './level.js';
 import { PAD } from './player.js';
 import {
   SHELL_X_SPEED, PLACED_X_OFFSET, PLACED_X_SPEED, CARRIED_X_OFFSET,
@@ -76,9 +76,9 @@ class Sprite {
     let tx = Math.floor(cx / 16);
     let ty = Math.floor(by / 16);
     let t = level.tileAt(tx, ty);
-    if (!isSlope(t)) {
+    if (!isSlope(t) || isCeilingSlope(t)) {
       const up = level.tileAt(tx, ty - 1);
-      if (isSlope(up)) {
+      if (isSlope(up) && !isCeilingSlope(up)) {
         t = up;
         ty--;
       } else {
@@ -119,7 +119,7 @@ class Sprite {
           break;
         }
       }
-    } else if (level.solidPx(this.x + 8, this.y)) {
+    } else if (level.ceilingPx(this.x + 8, this.y)) {
       f.ceiling = true;
       f.tx = Math.floor((this.x + 8) / 16);
       f.ty = Math.floor(this.y / 16);
@@ -279,11 +279,11 @@ class Throwable extends Sprite {
       v1 += 2;
       if (p.facePoseTimer >= 5) v1++;
     }
-    // 高さは SMW と同じ +13（しゃがみ・持ち上げ中は +15）。
+    // 高さは SMW と同じ +13（小さい状態・しゃがみ・持ち上げ中は +15）。
     // しゃがみ中だけ、ルミナの顔が隠れないよう横位置を 4px 前に出している（見た目のみ）
     const low = p.ducking || p.pickPoseTimer;
     this.x = p.xpos + (low && v1 < 2 ? (v1 ? -15 : 15) : CARRIED_X_OFFSET[v1]);
-    this.y = p.ypos + (low ? 15 : 13);
+    this.y = p.ypos + (low || !p.powerUp ? 15 : 13);
     this.xs = 0;
     this.ys = 0;
     this.subX = 0;
@@ -432,5 +432,46 @@ export class Spiker extends Sprite {
     this.ys = -0x20;
     this.xs = dir * 8;
     this.contactTimer = 0;
+  }
+}
+
+// キノコ（SMW のスーパーキノコ, sprite 0x74 / SprXXX_PowerUps_StarEntry 01C353）。
+// ？ブロックから 62 フレームかけて出てきて、1px/フレームで歩く。壁で向きを変える
+export class Mushroom extends Sprite {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'mushroom';
+    this.emerge = 62;        // $1540：ブロックから出てくる途中
+    this.contactTimer = 44;  // $154C：出てすぐは取れない
+    this.facing = 1;
+  }
+
+  get hitbox() { return { x: this.x + 2, y: this.y + 2, w: 12, h: 12 }; }
+
+  update(w) {
+    if (this.contactTimer) this.contactTimer--;
+    if (this.emerge) {
+      this.emerge--;
+      this.ys = -4;
+      this.moveY();
+    } else {
+      this.xs = this.facing ? 16 : -16;
+      this.moveY();
+      this.gravity();
+      if (w.frame & 3) this.ys--;
+      this.moveX();
+      const f = this.collide(w.level);
+      if (f.floor) this.ys = 0;
+      if (f.ceiling) this.ys = 0;
+      if (f.wall) this.facing ^= 1;
+    }
+    // 01C4AC
+    const p = w.player;
+    if (!this.contactTimer && this.emerge < 0x18 && touchesPlayer(p, this.hitbox)) {
+      this.dead = true;
+      p.giveMushroom();
+      return;
+    }
+    if (this.offscreen(w, 64)) this.dead = true;
   }
 }

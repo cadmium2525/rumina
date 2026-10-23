@@ -1,7 +1,7 @@
 // ステージの描画（背景・タイル）
 import { gridToCanvas } from './sprites.js';
-import { PAL_OBJ, TURN, STONE } from './art.js';
-import { SCREEN_W, SCREEN_H, GROUND_Y, TILE, isSlope, slopeK } from './level.js';
+import { PAL_OBJ, TURN, STONE, QUESTION, USED } from './art.js';
+import { SCREEN_W, SCREEN_H, GROUND_Y, TILE, isSlope, slopeK, isCeilingSlope } from './level.js';
 import { SLOPE_SHAPE } from './smw_tables.js';
 
 const TILE_PAL = {
@@ -123,6 +123,8 @@ export class LevelView {
     // 回転中のターンブロック：正面 → 細い → 真横 → 細い（4 フレームごと）
     this.turnSpin = [16, 10, 4, 10].map((w) => this.squeeze(this.turn, w));
     this.stone = gridToCanvas(STONE, PAL_OBJ);
+    this.question = gridToCanvas(QUESTION, PAL_OBJ);
+    this.used = gridToCanvas(USED, PAL_OBJ);
     this.vineTop = gridToCanvas(VINE_TOP, TILE_PAL);
     this.vine = gridToCanvas(VINE, TILE_PAL);
     this.slopes = {};
@@ -137,6 +139,18 @@ export class LevelView {
     c.height = 16;
     const g = c.getContext('2d');
     const col = (ch) => TILE_PAL[ch];
+    if (isCeilingSlope(TILE.SLOPE + k)) {
+      // 天井の坂：上側が石。形の値 (負) の分だけ固い
+      for (let x = 0; x < 16; x++) {
+        const n = -(((SLOPE_SHAPE[16 * k + x] & 0xff) << 24) >> 24);
+        for (let y = 0; y < n; y++) {
+          const ch = y >= n - 1 ? 'K' : y >= n - 2 ? 'z' : STONE[Math.min(y, 13)][x] === 'K' ? 'S' : STONE[Math.min(y, 13)][x];
+          g.fillStyle = PAL_OBJ[ch];
+          g.fillRect(x, y, 1, 1);
+        }
+      }
+      return c;
+    }
     for (let x = 0; x < 16; x++) {
       const top = SLOPE_SHAPE[16 * k + x];
       if (top > 15) continue;
@@ -237,6 +251,8 @@ export class LevelView {
         else if (t === TILE.STONE) img = this.stone;
         else if (t === TILE.SPIN) img = this.turnSpin[(this.frame >> 2) & 3];
         else if (t === TILE.TURN) img = this.turn;
+        else if (t === TILE.QUESTION) img = this.question;
+        else if (t === TILE.USED) img = this.used;
         else if (t === TILE.VINE) img = up === TILE.VINE ? this.vine : this.vineTop;
         else if (isSlope(t)) img = this.slopes[slopeK(t)];
         else continue;

@@ -3,7 +3,7 @@ import { RUMINA_FRAMES_TEXT } from './rumina_frames.js';
 import { POSE } from './player.js';
 import {
   PAL_OBJ, GIFT, SPIKER_A, SPIKER_B, PIECE_GOLD, PIECE_GIFT, STAR_A, STAR_B,
-  SHELL_SIDE, SHELL_FRONT, SHELL_EDGE,
+  SHELL_SIDE, SHELL_FRONT, SHELL_EDGE, MUSHROOM,
 } from './art.js';
 
 export const PALETTE = {
@@ -70,6 +70,34 @@ const POSE_FRAME = {
   [POSE.SWIM_A_CARRY]: 'carry_jump', [POSE.SWIM_B_CARRY]: 'carry_jump', [POSE.SWIM_CARRY]: 'carry_jump',
 };
 
+// 小さい状態（チビルミナ）のポーズ → フレーム名
+const SMALL_FRAME = {
+  [POSE.STAND]: 'c_stand', [POSE.WALK1]: 'c_walk', [POSE.WALK2]: 'c_walk',
+  [POSE.LOOKUP]: 'c_lookup',
+  [POSE.RUN0]: 'c_run1', [POSE.RUN1]: 'c_run2', [POSE.RUN2]: 'c_run1',
+  [POSE.JUMP]: 'c_jump', [POSE.RUNJUMP]: 'c_jump', [POSE.FALL]: 'c_fall',
+  [POSE.SKID]: 'c_skid', [POSE.DUCK]: 'c_duck',
+  [POSE.FACE]: 'c_front', [POSE.FRONT]: 'c_front', [POSE.BACK]: 'c_back',
+  [POSE.CARRY0]: 'c_carry', [POSE.CARRY1]: 'c_carry_walk', [POSE.CARRY2]: 'c_carry_walk',
+  [POSE.CARRY_UP]: 'c_carry', [POSE.PICKUP]: 'c_duck_carry', [POSE.CARRY_JUMP]: 'c_carry_jump',
+  [POSE.KICK]: 'c_kick',
+  [POSE.CLIMB]: 'c_climb', [POSE.SLIDE]: 'c_slide',
+  [POSE.SWIM_A]: 'c_fall', [POSE.SWIM_B]: 'c_jump', [POSE.SWIM]: 'c_jump',
+  [POSE.SWIM_A_CARRY]: 'c_carry_jump', [POSE.SWIM_B_CARRY]: 'c_carry_jump', [POSE.SWIM_CARRY]: 'c_carry_jump',
+  [POSE.DEAD]: 'c_dead',
+};
+
+// 大きさが変わる途中の中くらいの絵（大きい立ちポーズを縦に縮める）
+function medium(img) {
+  const c = document.createElement('canvas');
+  c.width = img.width;
+  c.height = img.height;
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.drawImage(img, 0, 8, img.width, img.height - 8);
+  return c;
+}
+
 export class RuminaSprite {
   constructor() {
     const frames = parseFrames(RUMINA_FRAMES_TEXT);
@@ -79,11 +107,18 @@ export class RuminaSprite {
       this.right[name] = gridToCanvas(rows, PALETTE, false);
       this.left[name] = gridToCanvas(rows, PALETTE, true);
     }
+    this.right.medium = medium(this.right.stand);
+    this.left.medium = medium(this.left.stand);
   }
 
   // (x, y) はプレイヤー座標（16x32 の当たり判定の左上）を画面座標にしたもの
-  draw(g, pose, facing, x, y) {
-    const name = POSE_FRAME[pose] ?? 'stand';
+  // powerUp: 0=小さい 1=大きい。0x3D は中くらい、0x46 は大きい立ち（大きさが変わる演出）
+  draw(g, pose, facing, x, y, powerUp = 1) {
+    let name;
+    if (pose === POSE.MEDIUM) name = 'medium';
+    else if (pose === POSE.BIG_STAND) name = 'stand';
+    else if (!powerUp) name = SMALL_FRAME[pose] ?? 'c_stand';
+    else name = POSE_FRAME[pose] ?? 'stand';
     const img = (facing ? this.right : this.left)[name];
     g.drawImage(img, x - 4, y);
   }
@@ -110,6 +145,7 @@ export class SmokeSprites {
 export class ActorSprites {
   constructor() {
     this.gift = gridToCanvas(GIFT, PAL_OBJ);
+    this.mushroom = gridToCanvas(MUSHROOM, PAL_OBJ);
     this.spiker = [SPIKER_A, SPIKER_B].map((f) => ({
       right: gridToCanvas(f, PAL_OBJ, false),
       left: gridToCanvas(f, PAL_OBJ, true),
@@ -125,6 +161,11 @@ export class ActorSprites {
   }
 
   drawActor(g, a, frame, x, y) {
+    if (a.type === 'mushroom') {
+      // 出てくる最初の 8 フレームは描かない (1540 < 0x36)
+      if (a.emerge < 0x36) g.drawImage(this.mushroom, x, y);
+      return;
+    }
     if (a.type === 'gift') {
       g.drawImage(this.gift, x, y);
       return;

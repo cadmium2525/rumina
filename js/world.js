@@ -2,7 +2,7 @@
 // DOM に依存しない（描画は main.js / *_view.js）。
 import { Player } from './player.js';
 import { Level, Camera, GROUND_Y, SCREEN_W, LEVEL_H, TILE } from './level.js';
-import { GiftBox, Shell, Spiker } from './actors.js';
+import { GiftBox, Shell, Spiker, Mushroom } from './actors.js';
 import { BRICK_X, BRICK_Y, BRICK_XSPEED, BRICK_YSPEED } from './smw_tables.js';
 
 export class World {
@@ -10,6 +10,7 @@ export class World {
     this.level = new Level();
     this.camera = new Camera();
     this.player = new Player(0x40, GROUND_Y - 0x20);
+    this.player.powerUp = 0; // SMW と同じく小さい状態で始まる
     this.actors = [];
     this.effects = [];
     this.events = [];
@@ -18,17 +19,26 @@ export class World {
     this.env = {
       level: this.level,
       camX: 0,
+      camY: this.camera.y,
       frame: 0,
       emit: (n) => this.emit(n),
       breakTile: (tx, ty) => this.breakTile(tx, ty),
-      bumpTile: (tx, ty) => { this.level.bounceTile(tx, ty); this.emit('bump'); },
+      bumpTile: (tx, ty) => { this.hitTile(tx, ty); this.emit('bump'); },
     };
   }
 
   emit(name) { this.events.push(name); }
 
-  // スプライトがブロックを叩いた（見た目だけ跳ねる）
-  hitTile(tx, ty) { this.level.bounceTile(tx, ty); }
+  // ブロックを叩いた（下から頭で・横から甲羅で）。？ブロックなら中身が出る
+  hitTile(tx, ty) {
+    const item = this.level.hitQuestion(tx, ty);
+    if (item === 'mushroom') {
+      this.actors.push(new Mushroom(tx * 16, ty * 16));
+      this.emit('sprout');
+      return;
+    }
+    this.level.bounceTile(tx, ty);
+  }
 
   // スピンジャンプでターンブロックが壊れる
   breakTile(tx, ty) {
@@ -50,8 +60,8 @@ export class World {
   // 接触エフェクト（SpawnContactEffectFromAbove）
   star(x, y) { this.effects.push({ kind: 'star', x, y, t: 8 }); }
 
+  // ダメージを受けた（縮む・ミス）。持っている物は落とす（SMW: 状態が 0 でなくなると status 9 になる）
   onPlayerHurt() {
-    this.emit('hurt');
     const p = this.player;
     if (p.carrying) {
       p.carrying.drop();
@@ -65,10 +75,18 @@ export class World {
     env.camX = this.camera.x;
     env.frame = this.frame;
 
+    env.camY = this.camera.y;
+    // 縮む・大きくなる・ミスの演出中はゲームが止まる (flag_sprites_locked)
+    if (this.player.locked) {
+      this.player.update(pad, env);
+      return;
+    }
+
     // SMW と同じく、カメラ → プレイヤー → スプライトの順
     this.camera.update(this.player);
     env.camX = this.camera.x;
     this.player.update(pad, env);
+    if (this.player.locked && this.player.carrying) this.onPlayerHurt();
 
     for (const s of this.player.smokeRequests) this.effects.push({ kind: 'smoke', x: s.x, y: s.y, t: 19 });
     this.player.smokeRequests.length = 0;
@@ -117,7 +135,7 @@ export class World {
     }
     this._splashed = this.events.includes('splash');
     if (p.swimming && (p.var8a & 2) && (this.frame & 63) === 0) {
-      this.effects.push({ kind: 'bubble', x: p.xpos + (p.facing ? 11 : 2), y: p.ypos + 6, t: 1 });
+      this.effects.push({ kind: 'bubble', x: p.xpos + (p.facing ? 11 : 2), y: p.ypos + (p.small ? 12 : 4), t: 1 });
     }
   }
 

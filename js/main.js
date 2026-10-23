@@ -26,7 +26,7 @@ let showDebug = false;
 
 // ゲーム内イベント → 効果音と触覚フィードバック
 const HAPTIC_OF = {
-  break: 'medium', shatter: 'medium', bounce: 'medium', hurt: 'heavy',
+  break: 'medium', shatter: 'medium', bounce: 'medium', shrink: 'heavy', die: 'heavy', grow: 'medium',
   bump: 'light', grab: 'light', throw: 'light', kick: 'light', splash: 'light',
 };
 
@@ -43,6 +43,8 @@ function step() {
     if (HAPTIC_OF[ev]) haptic(HAPTIC_OF[ev]);
   }
   world.events.length = 0;
+  // ミスの演出が終わったらやり直し
+  if (world.player.dead) reset();
 }
 
 function drawPMeter() {
@@ -69,6 +71,10 @@ function render() {
   const camY = world.camera.y;
   const p = world.player;
   view.drawBackground(g, camX, camY);
+  // ブロックから出てくる途中のキノコはブロックの後ろ
+  for (const a of world.actors) {
+    if (a.type === 'mushroom' && a.emerge) actorSprites.drawActor(g, a, world.frame, a.x - camX, a.y - camY);
+  }
   view.drawTiles(g, world.level, camX, camY, world.frame);
 
   for (const e of world.effects) {
@@ -76,11 +82,12 @@ function render() {
   }
   for (const a of world.actors) {
     if (a.state === 'carried') continue; // 手前に描く
+    if (a.type === 'mushroom' && a.emerge) continue;
     actorSprites.drawActor(g, a, world.frame, a.x - camX, a.y - camY);
   }
   // ダメージ後の無敵中は点滅
   if (!(p.hurtTimer && (p.hurtTimer >> 1) & 1)) {
-    sprite.draw(g, p.pose, p.facing, p.xpos - camX, p.ypos - camY);
+    sprite.draw(g, p.pose, p.facing, p.xpos - camX, p.ypos - camY, p.powerUp);
   }
   for (const a of world.actors) {
     if (a.state === 'carried') actorSprites.drawActor(g, a, world.frame, a.x - camX, a.y - camY);
@@ -110,7 +117,8 @@ function render() {
       `X ${String(p.xpos).padStart(4)}  Y ${p.ypos}\n` +
       `Xspd ${hex(p.xspeed)} (${s8(p.xspeed)})  Yspd ${hex(p.yspeed)} (${s8(p.yspeed)})\n` +
       `P ${hex(p.pmeter)}  air ${hex(p.inAir)}  pose ${hex(p.pose)}\n` +
-      `spin ${p.spin}  duck ${p.ducking ? 1 : 0}  hold ${p.carrying ? 1 : 0}  cam ${camX}`;
+      `spin ${p.spin}  duck ${p.ducking ? 1 : 0}  hold ${p.carrying ? 1 : 0}  cam ${camX}\n` +
+      `power ${p.powerUp}  state ${p.state}`;
   }
 }
 

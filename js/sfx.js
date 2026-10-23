@@ -59,8 +59,19 @@ export const sfx = {
     tone('square', 260, 780, 0.12, 0.08);
     setTimeout(() => tone('triangle', 520, 1040, 0.1, 0.07), 50);
   },
-  hurt() {
+  // 縮む：下がっていく音
+  shrink() {
+    [660, 520, 400, 300].forEach((f, i) => setTimeout(() => tone('square', f, f * 0.9, 0.09, 0.07), i * 90));
+  },
+  // 大きくなる：上がっていく音
+  grow() {
+    [300, 400, 520, 660, 800].forEach((f, i) => setTimeout(() => tone('square', f, f * 1.1, 0.08, 0.07), i * 80));
+  },
+  powerup() { tone('square', 600, 1200, 0.15, 0.07); },
+  sprout() { tone('triangle', 200, 600, 0.3, 0.08); },
+  die() {
     tone('sawtooth', 420, 90, 0.35, 0.1);
+    [520, 440, 370, 300, 250].forEach((f, i) => setTimeout(() => tone('square', f, f * 0.95, 0.16, 0.07), 500 + i * 180));
   },
   grab() { tone('triangle', 500, 760, 0.08, 0.09); },
   throw() { tone('triangle', 700, 260, 0.14, 0.09); },
