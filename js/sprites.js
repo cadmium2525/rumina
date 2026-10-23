@@ -1,6 +1,7 @@
 // ドット絵の読み込みとキャンバス化
 import { RUMINA_FRAMES_TEXT } from './rumina_frames.js';
 import { POSE } from './player.js';
+import { PAL_OBJ, GIFT, SPIKER_A, SPIKER_B, PIECE_GOLD, PIECE_GIFT, STAR_A, STAR_B } from './art.js';
 
 export const PALETTE = {
   K: '#24141c', // 輪郭
@@ -57,6 +58,9 @@ const POSE_FRAME = {
   [POSE.JUMP]: 'jump', [POSE.RUNJUMP]: 'runjump', [POSE.FALL]: 'fall',
   [POSE.SKID]: 'skid', [POSE.DUCK]: 'duck',
   [POSE.FACE]: 'front', [POSE.FRONT]: 'front', [POSE.BACK]: 'back',
+  [POSE.CARRY0]: 'carry', [POSE.CARRY1]: 'carry_walk1', [POSE.CARRY2]: 'carry_walk2',
+  [POSE.CARRY_UP]: 'carry', [POSE.PICKUP]: 'carry', [POSE.CARRY_JUMP]: 'carry_jump',
+  [POSE.KICK]: 'kick',
 };
 
 export class RuminaSprite {
@@ -92,5 +96,50 @@ export class SmokeSprites {
   draw(g, timer, x, y) {
     const i = timer > 12 ? 0 : timer > 6 ? 1 : 2;
     g.drawImage(this.frames[i], x, y + 1);
+  }
+}
+
+// ブロック・敵・エフェクトの絵
+export class ActorSprites {
+  constructor() {
+    this.gift = gridToCanvas(GIFT, PAL_OBJ);
+    this.spiker = [SPIKER_A, SPIKER_B].map((f) => ({
+      right: gridToCanvas(f, PAL_OBJ, false),
+      left: gridToCanvas(f, PAL_OBJ, true),
+    }));
+    this.pieces = { gold: gridToCanvas(PIECE_GOLD, PAL_OBJ), gift: gridToCanvas(PIECE_GIFT, PAL_OBJ) };
+    this.stars = [STAR_A, STAR_B].map((f) => gridToCanvas(f, PAL_OBJ));
+  }
+
+  drawActor(g, a, frame, x, y) {
+    if (a.type === 'gift') {
+      g.drawImage(this.gift, x, y);
+      return;
+    }
+    const img = this.spiker[(frame >> 3) & 1][a.facing ? 'right' : 'left'];
+    if (a.dying) {
+      g.save();
+      g.translate(x, y + 16);
+      g.scale(1, -1);
+      g.drawImage(img, 0, 0);
+      g.restore();
+    } else {
+      g.drawImage(img, x, y);
+    }
+  }
+
+  // かけら：向きが 8 通りに回る (kMExtSpr01_BrickPiece_Flip)
+  drawPiece(g, e, frame, x, y) {
+    const flips = [0, 0, 2, 2, 2, 3, 1, 0]; // bit0 = 左右反転, bit1 = 上下反転
+    const f = flips[(e.slot + (frame >> 1)) & 7];
+    g.save();
+    g.translate(x + 4, y + 4);
+    g.scale(f & 1 ? -1 : 1, f & 2 ? -1 : 1);
+    g.drawImage(this.pieces[e.pal], -4, -4);
+    g.restore();
+  }
+
+  drawStar(g, e, x, y) {
+    g.drawImage(this.stars[(e.t >> 1) & 1], x, y);
   }
 }

@@ -1,5 +1,6 @@
 // 入力（キーボード / ゲームパッド / タッチ）を SMW のコントローラビットに変換する
 import { PAD, PAD2 } from './player.js';
+import { haptic } from './haptics.js';
 
 const KEYMAP = {
   ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down',
@@ -89,6 +90,8 @@ export class Input {
       if (p.zone === 'dpad') this.dpadDirs(p.x, p.y, t);
       else this.buttonsAt(p.x, p.y, t);
     }
+    // 新しく押したボタン・方向に触覚フィードバック（押した感触の代わり）
+    for (const k of t) if (!this.touch.has(k)) { haptic('light'); break; }
     this.touch = t;
     this.dpad.dataset.dir = ['left', 'right', 'up', 'down'].filter((d) => t.has(d)).join(' ');
     for (const el of this.btnEls) el.classList.toggle('on', t.has(el.dataset.btn));

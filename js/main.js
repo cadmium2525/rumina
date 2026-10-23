@@ -1,8 +1,10 @@
-import { Player } from './player.js';
-import { RuminaSprite, SmokeSprites } from './sprites.js';
-import { Level, Camera, SCREEN_W, SCREEN_H, GROUND_Y } from './level.js';
+import { World } from './world.js';
+import { RuminaSprite, SmokeSprites, ActorSprites } from './sprites.js';
+import { LevelView } from './level_view.js';
+import { SCREEN_W, SCREEN_H } from './level.js';
 import { Input } from './input.js';
 import { sfx, unlockAudio } from './sfx.js';
+import { haptic, isHapticsOn, setHaptics } from './haptics.js';
 
 const FRAME_MS = 1000 / 60.0988; // SNES (NTSC) のフレームレート
 
@@ -12,17 +14,21 @@ g.imageSmoothingEnabled = false;
 
 const touchRoot = document.getElementById('touch');
 const input = new Input(touchRoot);
-const level = new Level();
-const camera = new Camera();
+const view = new LevelView();
 const sprite = new RuminaSprite();
 const smokeSprites = new SmokeSprites();
+const actorSprites = new ActorSprites();
 const debugEl = document.getElementById('debug');
 
-let player = new Player(0x40, GROUND_Y - 0x20);
-let smokes = [];
-let frame = 0;
+let world = new World();
 let paused = false;
 let showDebug = false;
+
+// ゲーム内イベント → 効果音と触覚フィードバック
+const HAPTIC_OF = {
+  break: 'medium', shatter: 'medium', bounce: 'medium', hurt: 'heavy',
+  bump: 'light', grab: 'light', throw: 'light', kick: 'light',
+};
 
 function step() {
   const pad = input.poll();
@@ -31,46 +37,59 @@ function step() {
     sfx.pause();
   }
   if (paused) return;
-
-  frame = (frame + 1) & 0xff;
-  // SMW と同じく、カメラ → プレイヤーの順で処理
-  camera.update(player);
-  player.update(pad, { groundY: GROUND_Y, camX: camera.x, frame });
-  if (player.sfx) {
-    sfx[player.sfx]();
-    player.sfx = null;
+  world.step(pad);
+  for (const ev of world.events) {
+    if (sfx[ev]) sfx[ev]();
+    if (HAPTIC_OF[ev]) haptic(HAPTIC_OF[ev]);
   }
-  for (const s of player.smokeRequests) {
-    if (smokes.length < 3) smokes.push({ x: s.x, y: s.y, t: 19 });
-  }
-  player.smokeRequests.length = 0;
-  smokes = smokes.filter((s) => --s.t > 0);
+  world.events.length = 0;
 }
 
 function drawPMeter() {
   // P メーター（SMW には表示が無いが、操作感確認用に表示）
-  const n = Math.floor(player.pmeter / 16); // 0..7
+  const p = world.player;
+  const blink = world.frame & 4;
+  const n = Math.floor(p.pmeter / 16); // 0..7
   for (let i = 0; i < 7; i++) {
     const on = i < n;
     g.fillStyle = '#24141c';
     g.fillRect(8 + i * 7, 8, 6, 6);
-    g.fillStyle = on ? (n >= 7 ? (frame & 4 ? '#ffffff' : '#ff5050') : '#ffd040') : '#5a5070';
+    g.fillStyle = on ? (n >= 7 ? (blink ? '#ffffff' : '#ff5050') : '#ffd040') : '#5a5070';
     g.fillRect(9 + i * 7, 9, 4, 4);
   }
   g.fillStyle = '#24141c';
   g.fillRect(58, 7, 11, 8);
-  g.fillStyle = n >= 7 ? (frame & 4 ? '#ffffff' : '#ff5050') : '#8a80a0';
-  // "P"
+  g.fillStyle = n >= 7 ? (blink ? '#ffffff' : '#ff5050') : '#8a80a0';
   const P = ['111.', '1..1', '111.', '1...', '1...'];
-  P.forEach((row, y) => [...row].forEach((c, x) => c === '1' && g.fillRect(61 + x, 8 + y + 0, 1, 1)));
+  P.forEach((row, y) => [...row].forEach((c, x) => c === '1' && g.fillRect(61 + x, 8 + y, 1, 1)));
 }
 
 function render() {
-  const camX = camera.x;
-  const camY = camera.y;
-  level.draw(g, camX, camY);
-  for (const s of smokes) smokeSprites.draw(g, s.t, s.x - camX, s.y - camY);
-  sprite.draw(g, player.pose, player.facing, player.xpos - camX, player.ypos - camY);
+  const camX = Math.floor(world.camera.x);
+  const camY = world.camera.y;
+  const p = world.player;
+  view.drawBackground(g, camX, camY);
+  view.drawTiles(g, world.level, camX, camY);
+
+  for (const e of world.effects) {
+    if (e.kind === 'smoke') smokeSprites.draw(g, e.t, e.x - camX, e.y - camY);
+  }
+  for (const a of world.actors) {
+    if (a.state === 'carried') continue; // 手前に描く
+    actorSprites.drawActor(g, a, world.frame, a.x - camX, a.y - camY);
+  }
+  // ダメージ後の無敵中は点滅
+  if (!(p.hurtTimer && (p.hurtTimer >> 1) & 1)) {
+    sprite.draw(g, p.pose, p.facing, p.xpos - camX, p.ypos - camY);
+  }
+  for (const a of world.actors) {
+    if (a.state === 'carried') actorSprites.drawActor(g, a, world.frame, a.x - camX, a.y - camY);
+  }
+  for (const e of world.effects) {
+    if (e.kind === 'piece') actorSprites.drawPiece(g, e, world.frame, e.x - camX, e.y - camY);
+    else if (e.kind === 'star') actorSprites.drawStar(g, e, e.x - camX, e.y - camY);
+  }
+
   drawPMeter();
   if (paused) {
     g.fillStyle = 'rgba(0,0,0,0.45)';
@@ -85,10 +104,10 @@ function render() {
     const hex = (v) => v.toString(16).toUpperCase().padStart(2, '0');
     const s8 = (v) => ((v & 0xff) << 24) >> 24;
     debugEl.textContent =
-      `X ${player.xpos.toString().padStart(4)}  Y ${player.ypos}\n` +
-      `Xspd ${hex(player.xspeed)} (${s8(player.xspeed)})  Yspd ${hex(player.yspeed)} (${s8(player.yspeed)})\n` +
-      `P ${hex(player.pmeter)}  air ${hex(player.inAir)}  pose ${hex(player.pose)}\n` +
-      `spin ${player.spin}  duck ${player.ducking ? 1 : 0}  cam ${camX}`;
+      `X ${String(p.xpos).padStart(4)}  Y ${p.ypos}\n` +
+      `Xspd ${hex(p.xspeed)} (${s8(p.xspeed)})  Yspd ${hex(p.yspeed)} (${s8(p.yspeed)})\n` +
+      `P ${hex(p.pmeter)}  air ${hex(p.inAir)}  pose ${hex(p.pose)}\n` +
+      `spin ${p.spin}  duck ${p.ducking ? 1 : 0}  hold ${p.carrying ? 1 : 0}  cam ${camX}`;
   }
 }
 
@@ -143,19 +162,32 @@ const unlock = () => unlockAudio();
 window.addEventListener('pointerdown', unlock);
 window.addEventListener('keydown', unlock);
 
-document.getElementById('btn-debug').addEventListener('click', () => {
+function toggleDebug() {
   showDebug = !showDebug;
   debugEl.hidden = !showDebug;
+}
+function reset() {
+  world = new World();
+  paused = false;
+}
+
+document.getElementById('btn-debug').addEventListener('click', toggleDebug);
+document.getElementById('btn-reset').addEventListener('click', reset);
+const hapBtn = document.getElementById('btn-haptic');
+function syncHapBtn() {
+  hapBtn.classList.toggle('off', !isHapticsOn());
+  hapBtn.setAttribute('aria-pressed', String(isHapticsOn()));
+}
+hapBtn.addEventListener('click', () => {
+  setHaptics(!isHapticsOn());
+  syncHapBtn();
+  haptic('medium');
 });
+syncHapBtn();
+
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'F2' || e.code === 'Backquote') {
-    showDebug = !showDebug;
-    debugEl.hidden = !showDebug;
-  }
-  if (e.code === 'KeyR') {
-    player = new Player(0x40, GROUND_Y - 0x20);
-    camera.x = 0;
-  }
+  if (e.code === 'F2' || e.code === 'Backquote') toggleDebug();
+  if (e.code === 'KeyR') reset();
 });
 document.getElementById('btn-full').addEventListener('click', async () => {
   try {
@@ -177,3 +209,6 @@ document.getElementById('help').addEventListener('click', (e) => {
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
+
+// デバッグ・自動テスト用
+window.rumina = { get world() { return world; } };

@@ -59,3 +59,33 @@ export const WALK_POSE_COUNT = 2;
 // スピンジャンプのポーズ (00CE99/00CEA1)。大きい状態の奇数 index を使用
 export const SPIN_POSES = [0x00, 0x00, 0x25, 0x44, 0x00, 0x00, 0x0f, 0x45];
 export const SPIN_FACING = [0, 0, 0, 0, 1, 1, 1, 1];
+
+// ---- スプライト（ブロック・敵）関連 ----
+
+// 蹴る/投げる速度 (019F1B 付近 ShellXSpeed)。index = 向き(0=左,1=右)
+export const SHELL_X_SPEED = [0xd2, 0x2e, 0xcc, 0x34];
+// 置く時の初速 (PlacedSpriteInitialXSpeed) と位置
+export const PLACED_X_OFFSET = [-13, 13];
+export const PLACED_X_SPEED = [0xfc, 0x04];
+// 持っている時の横オフセット (CarriedSpriteXOffset)。index: 0=右向き 1=左向き 2.. = 正面向き中
+export const CARRIED_X_OFFSET = [11, -11, 4, -4, 4, 0];
+
+// スプライトの重力 (019032)
+export const SPR_GRAVITY = 3;
+export const SPR_MAX_FALL = 0x40;
+
+// 気絶中スプライトが着地したときのバウンド (0197AF)。index = 着地速度 >> 2
+export const STUN_BOUNCE = [
+  0x00, 0x00, 0x00, 0xf8, 0xf8, 0xf8, 0xf8, 0xf8, 0xf8, 0xf7, 0xf6, 0xf5, 0xf4, 0xf3, 0xf2, 0xe8,
+  0xe8, 0xe8, 0xe8,
+];
+
+// 敵を踏んだ時のプレイヤーの跳ね返り (BoostMarioSpeed, 01AA33)
+export const BOOST_HOLD_B = 0xa8; // -88
+export const BOOST_NORMAL = 0xd0; // -48
+
+// ブロックのかけら (SpawnBrickPieces, 028663)
+export const BRICK_X = [0, 8, 0, 8];
+export const BRICK_Y = [0, 0, 8, 8];
+export const BRICK_XSPEED = [-1, 1, -1, 1];
+export const BRICK_YSPEED = [-5, -5, -3, -3];

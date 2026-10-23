@@ -1,9 +1,10 @@
 // オフライン用 Service Worker。ファイルを更新したら VERSION を上げる
-const VERSION = 'rumina-v1';
+const VERSION = 'rumina-v2';
 const ASSETS = [
   './', 'index.html', 'style.css', 'manifest.webmanifest',
   'js/main.js', 'js/player.js', 'js/smw_tables.js', 'js/sprites.js', 'js/rumina_frames.js',
-  'js/level.js', 'js/input.js', 'js/sfx.js',
+  'js/level.js', 'js/level_view.js', 'js/input.js', 'js/sfx.js',
+  'js/world.js', 'js/actors.js', 'js/art.js', 'js/haptics.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon-180.png',
 ];
 

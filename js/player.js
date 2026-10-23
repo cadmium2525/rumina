@@ -4,7 +4,9 @@
 import {
   JUMP_HEIGHT, DECEL, ACCEL, MAX_SPEED, SLOPE_REST_SPEED, PMETER_DELTA,
   GRAVITY, MAX_FALL, ANIM_SPEED, WALK_POSE_COUNT, SPIN_POSES, SPIN_FACING,
+  BOOST_HOLD_B, BOOST_NORMAL,
 } from './smw_tables.js';
+import { TILE } from './level.js';
 
 const u8 = (v) => v & 0xff;
 const s8 = (v) => ((v & 0xff) << 24) >> 24;
@@ -25,13 +27,17 @@ const AIR_FALL = 0x24;
 export const POSE = {
   STAND: 0x00, WALK1: 0x01, WALK2: 0x02, LOOKUP: 0x03,
   RUN0: 0x04, RUN1: 0x05, RUN2: 0x06,
-  JUMP: AIR_JUMP, RUNJUMP: AIR_RUNJUMP, SKID: 0x0d, FACE: 0x0f,
+  CARRY0: 0x07, CARRY1: 0x08, CARRY2: 0x09, CARRY_UP: 0x0a,
+  JUMP: AIR_JUMP, RUNJUMP: AIR_RUNJUMP, SKID: 0x0d, KICK: 0x0e, FACE: 0x0f,
+  PICKUP: 0x1d, CARRY_JUMP: 0x1e,
   FALL: AIR_FALL, DUCK: 0x3c, BACK: 0x44, FRONT: 0x45,
 };
 
+export const HURT_TIME = 0x7f;
+
 export class Player {
   constructor(x, y) {
-    this.xpos = x;          // 16bit 位置（スプライト左上）
+    this.xpos = x;          // 16bit 位置（当たり判定 16x32 の左上）
     this.ypos = y;
     this.subX = 0;          // サブピクセル
     this.subY = 0;
@@ -50,25 +56,40 @@ export class Player {
     this.walkFrame = 0;
     this.overrideWalk = 0;
     this.pose = POSE.STAND;
-    // タイマー（毎フレーム 1 ずつ減る：$1496〜）
+    this.carrying = null;   // 持っているスプライト
+    // タイマー（毎フレーム 1 ずつ減る）
     this.animTimer = 0;
     this.runTakeoffTimer = 0;
     this.slideTurnTimer = 0;
+    this.facePoseTimer = 0;   // 持ち替え中の正面向きポーズ ($1498)
+    this.kickPoseTimer = 0;   // 投げ/蹴りポーズ ($149C)
+    this.pickPoseTimer = 0;   // 持ち上げポーズ ($149B)
+    this.hurtTimer = 0;       // ダメージ後の無敵 ($1497)
     this.smokeRequests = [];
   }
 
   get xspeed16() { return (this.xspeed << 8) | this.subXspeed; }
   set xspeed16(v) { v = u16(v); this.xspeed = v >> 8; this.subXspeed = v & 0xff; }
 
-  // 1 フレーム進める。in = {hold1, press1, hold2, press2}
-  // world = {groundY, camX, frame}
-  update(input, world) {
+  // 当たり判定の矩形（スプライトとの接触用）
+  get hitbox() {
+    const top = this.ypos + (this.ducking ? 0x14 : 0x06);
+    return { x: this.xpos + 2, y: top, w: 12, h: this.ypos + 0x20 - top };
+  }
+
+  // 1 フレーム進める。input = {hold1, press1, hold2, press2}
+  // env = {level, camX, frame, emit(name), breakTile(tx,ty), bumpTile(tx,ty)}
+  update(input, env) {
     this.in = input;
-    this.world = world;
+    this.env = env;
     // タイマー減算 (00C47E 内のループ)
     if (this.animTimer) this.animTimer--;
     if (this.runTakeoffTimer) this.runTakeoffTimer--;
     if (this.slideTurnTimer) this.slideTurnTimer--;
+    if (this.facePoseTimer) this.facePoseTimer--;
+    if (this.kickPoseTimer) this.kickPoseTimer--;
+    if (this.pickPoseTimer) this.pickPoseTimer--;
+    if (this.hurtTimer) this.hurtTimer--;
 
     // PlayerState00
     this.overrideWalk = 0;
@@ -93,32 +114,20 @@ export class Player {
     this.ypos = u16(this.ypos + (s8(this.yspeed) >> 4) + (ty >> 8));
   }
 
-  // HandlePlayerLevelCollision (00E92B) の平地版
+  // HandlePlayerLevelCollision (00E92B)
   levelCollision() {
     this.animSpeedIndex = 0;
     this.blocked = 0;
     this.slope = 0;
-    const ground = this.world.groundY;
-    const feet = this.ypos + 0x20;
-    if (feet >= ground && feet < ground + 16 && !(this.yspeed & 0x80)) {
-      // RunPlayerBlockCode_00EED1 / 00EEE1（j=0x20：平らな地面）
-      this.ypos = u16(this.ypos - (feet - ground));
-      this.yspeed = 0; // StationaryYSpeed[0x20] = 0
-      this.inAir = 0;
-      this.spin = 0;
-      this.blocked |= 4;
-    } else if (!(this.inAir | (this.blocked & 4))) {
-      this.inAir = AIR_FALL;
-    }
+    this.tileCollision();
     // 画面端 (00E98C)
-    const camX = this.world.camX;
-    const rel = (this.xpos - camX) << 16 >> 16;
+    const rel = (this.xpos - this.env.camX) << 16 >> 16;
     if (rel <= 232) {
       if (rel - 8 < 0) this.blocked |= 2;
     } else {
       this.blocked |= 1;
     }
-    // 00EA0D
+    // 00EA0D：壁に埋まっていたら 1px ずつ押し戻す
     if (this.blocked & 3) {
       const push = (this.blocked & 2) ? 1 : -1;
       this.xpos = u16(this.xpos + push);
@@ -128,9 +137,85 @@ export class Player {
     }
   }
 
+  // RunPlayerBlockCode (00EADB〜)：体の 6 点でタイルを調べる。
+  // 立ち：横(下)=y+0x18 横(上)=y+0x09 頭=y+3 足=y+0x20（x は体の左右で切り替え）
+  // しゃがみ：横=y+0x1A/0x16 頭=y+0x10
+  tileCollision() {
+    const { level } = this.env;
+    const wasAir = this.inAir; // temp8f
+    const duck = this.ducking;
+    const sideLo = duck ? 0x1a : 0x18;
+    const sideHi = duck ? 0x16 : 0x09;
+    const headOff = duck ? 0x10 : 0x03;
+    const x = this.xpos;
+    const hd = (x & 0xf) >= 8 ? 1 : 0; // タイル内の左右どちらにいるか
+
+    // 横：タイル内の位置に応じて片側だけ調べる (00EBF0 付近)
+    const sx = x + (hd ? 2 : 0xe);
+    if (level.solidPx(sx, this.ypos + sideLo) || level.solidPx(sx, this.ypos + sideHi)) {
+      this.animSpeedIndex = 3;
+      if ((x & 0xf) !== (hd ? 0xd : 2)) this.blocked |= hd ? 2 : 1;
+    }
+
+    // 頭 (00EC4E 付近)
+    const hx = x + 8;
+    const hy = this.ypos + headOff;
+    if (level.solidPx(hx, hy)) {
+      const p = hy & 0xf;
+      if (level.tileAtPx(hx, hy) !== TILE.TURN) {
+        if (this.inAir || p >= 9) {
+          if (this.inAir) this.ypos = u16(this.ypos + (15 - p));
+          this.blocked |= 8;
+        } else {
+          // 立ったまま頭が埋まっている
+          this.blocked = (this.blocked & 0xf4) | 9;
+          this.xspeed = 0;
+        }
+      }
+      if (this.yspeed & 0x80) {
+        this.yspeed = 0;
+        this.env.bumpTile(Math.floor(hx / 16), Math.floor(hy / 16));
+      }
+    }
+
+    // 足：最初に埋まっている足で判定する (00ED8A 付近)
+    const fy = this.ypos + 0x20;
+    const feet = hd ? [x + 0xb, x + 5] : [x + 5, x + 0xb];
+    for (const fx of feet) {
+      if (!level.solidPx(fx, fy)) continue;
+      if (this.yspeed & 0x80) return; // 上昇中は着地しない
+      const pib = fy & 0xf;
+      if (pib >= 8) {
+        this.airCheck();
+        return;
+      }
+      const tx = Math.floor(fx / 16);
+      const ty = Math.floor(fy / 16);
+      // 00EE3A：空中でスピンジャンプ中にターンブロックへ着地すると壊れる（止まらない）
+      if (level.tileAt(tx, ty) === TILE.TURN && wasAir && this.spin) {
+        this.env.breakTile(tx, ty);
+        this.airCheck();
+        return;
+      }
+      // 00EED1 / 00EEE1：着地
+      this.ypos = u16(this.ypos - pib);
+      this.yspeed = 0;
+      this.inAir = 0;
+      this.spin = 0;
+      this.blocked |= 4;
+      return;
+    }
+    this.airCheck();
+  }
+
+  // 00EE1D：足場がなければ落下状態にする
+  airCheck() {
+    if (!(this.inAir | (this.blocked & 4))) this.inAir = AIR_FALL;
+  }
+
   smoke() {
     // SpawnPlayerTurnAroundSmoke (00FE4A)
-    if (this.inAir || (this.world.frame & 3)) return;
+    if (this.inAir || (this.env.frame & 3)) return;
     if ((this.in.hold1 & PAD.DOWN) && u8(this.xspeed + 8) < 0x10) return;
     this.smokeRequests.push({ x: this.xpos + 4, y: this.ypos + 26 });
   }
@@ -158,12 +243,12 @@ export class Player {
         }
       } else {
         let v1 = (abs8(this.xspeed) >> 2) & 0xfe;
-        if (press2 & PAD2.A) {
+        if (!(press2 & PAD2.A) || this.carrying) {
+          this.env.emit('jump');
+        } else {
           this.spin = 1;
           v1++;
-          this.sfx = 'spin';
-        } else {
-          this.sfx = 'jump';
+          this.env.emit('spin');
         }
         this.yspeed = JUMP_HEIGHT[v1];
         this.inAir = this.pmeter >= 0x70 ? AIR_RUNJUMP : AIR_JUMP;
@@ -175,7 +260,14 @@ export class Player {
       return;
     }
     const dir = hold1 & 1;
-    if (dir !== this.facing) this.facing = dir;
+    if (dir !== this.facing) {
+      // 物を持っている間は、向きを変えるとき一瞬こちらを向く (00D63B)
+      if (!this.carrying) this.facing = dir;
+      else if (!this.facePoseTimer) {
+        this.facePoseTimer = 8;
+        this.facing = dir;
+      }
+    }
     const r1 = dir;
     let k = u8(this.slope | (4 * dir));
     const accelHi = ACCEL[k >> 1] >> 8;
@@ -239,18 +331,45 @@ export class Player {
     this.yspeed = u8(GRAVITY[j] + v);
   }
 
+  // 敵を踏んで跳ねる BoostMarioSpeed (01AA33)
+  boost() {
+    this.yspeed = (this.in.hold1 & PAD.B) ? BOOST_HOLD_B : BOOST_NORMAL;
+  }
+
+  // ダメージ。受けたら true（無敵中は false）。dir は敵がいる向き（+1 右, -1 左）
+  hurt(dir) {
+    if (this.hurtTimer) return false;
+    this.hurtTimer = HURT_TIME;
+    this.xspeed = u8(dir > 0 ? -0x18 : 0x18);
+    this.subXspeed = 0;
+    this.yspeed = 0xe0; // -32
+    this.inAir = AIR_FALL;
+    this.spin = 0;
+    this.ducking = 0;
+    return true;
+  }
+
   // SetPlayerPose (00CEB1)
   setPose() {
     if (this.spin) {
       this.ducking = 0;
-      const i = (this.world.frame & 6) + 1;
+      const i = (this.env.frame & 6) + 1;
       this.facing = SPIN_FACING[i];
       this.pose = SPIN_POSES[i];
       return;
     }
-    if (this.ducking) { this.pose = POSE.DUCK; return; }
+    if (this.ducking) {
+      this.pose = this.carrying ? POSE.PICKUP : POSE.DUCK;
+      return;
+    }
+    if (this.kickPoseTimer) { this.pose = POSE.KICK; return; }
+    if (this.pickPoseTimer) { this.pose = POSE.PICKUP; return; }
+    if (this.facePoseTimer) { this.pose = POSE.FACE; return; }
     if (this.inAir) {
-      if (!this.runTakeoffTimer) { this.pose = this.inAir; return; }
+      if (!this.runTakeoffTimer) {
+        this.pose = this.carrying ? POSE.CARRY_JUMP : this.inAir;
+        return;
+      }
       this.walkPose();
       return;
     }
@@ -275,6 +394,7 @@ export class Player {
     }
     this.walkFrame = frame;
     const v = this.overrideWalk + frame;
-    this.pose = a >= 0x2f ? v + 4 : v;
+    if (this.carrying) this.pose = v + 7;
+    else this.pose = a >= 0x2f ? v + 4 : v;
   }
 }

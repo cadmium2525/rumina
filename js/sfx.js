@@ -25,6 +25,20 @@ function tone(type, f0, f1, dur, vol = 0.12) {
   o.stop(t + dur);
 }
 
+function noise(dur, vol) {
+  if (!ctx || ctx.state !== 'running') return;
+  const n = Math.floor(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  const src = ctx.createBufferSource();
+  const g = ctx.createGain();
+  g.gain.value = vol;
+  src.buffer = buf;
+  src.connect(g).connect(ctx.destination);
+  src.start();
+}
+
 export const sfx = {
   jump() { tone('square', 330, 990, 0.16, 0.08); },
   spin() {
@@ -32,4 +46,23 @@ export const sfx = {
     setTimeout(() => tone('triangle', 900, 1800, 0.12, 0.1), 40);
   },
   pause() { tone('square', 880, 880, 0.08, 0.06); },
+  bump() { tone('square', 140, 90, 0.07, 0.1); },
+  break() {
+    noise(0.22, 0.14);
+    tone('square', 220, 70, 0.18, 0.06);
+  },
+  shatter() {
+    noise(0.2, 0.12);
+    tone('triangle', 520, 160, 0.14, 0.06);
+  },
+  bounce() {
+    tone('square', 260, 780, 0.12, 0.08);
+    setTimeout(() => tone('triangle', 520, 1040, 0.1, 0.07), 50);
+  },
+  hurt() {
+    tone('sawtooth', 420, 90, 0.35, 0.1);
+  },
+  grab() { tone('triangle', 500, 760, 0.08, 0.09); },
+  throw() { tone('triangle', 700, 260, 0.14, 0.09); },
+  kick() { tone('square', 300, 180, 0.08, 0.08); },
 };

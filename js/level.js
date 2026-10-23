@@ -1,155 +1,94 @@
-// 平坦なテストステージ
-import { gridToCanvas } from './sprites.js';
-
+// テストステージ（タイルマップ）。DOM に依存しないのでヘッドレスでテストできる。
 export const SCREEN_W = 256;
 export const SCREEN_H = 224;
-export const LEVEL_W = 256 * 16;
-export const LEVEL_H = 432; // 27 タイル
+export const TILES_W = 256;
+export const TILES_H = 27;
+export const LEVEL_W = TILES_W * 16;
+export const LEVEL_H = TILES_H * 16; // 432
 export const GROUND_Y = 384; // 地面の上端
 export const CAM_Y = LEVEL_H - SCREEN_H;
 
-const TILE_PAL = {
-  K: '#2a1c14', G: '#58c048', g: '#2f8a34', l: '#a8ec70',
-  D: '#c88a48', d: '#9a5e2c', e: '#e8b070', x: '#6e3e1c',
-};
-const GRASS = [
-  'llllllllllllllll',
-  'GGlGGGGGlGGGGlGG',
-  'GGGGGGGGGGGGGGGG',
-  'GgGGGGgGGGGgGGGG',
-  'gKgGGgKgGGgKgGGg',
-  'KDKgGKDKggKDKgGK',
-  'DDDKgKDDKKDDDKgK',
-  'DeDDKDDeDDDeDDKD',
-  'DDDDDDDDDDDDDDDD',
-  'DDdDDDDDDDdDDDDD',
-  'DDDDDDeDDDDDDDDD',
-  'DDDDDDDDDdDDDDDD',
-  'DdDDDDDDDDDDDeDD',
-  'DDDDDDDDDDDDDDDD',
-  'DDDDeDDDDDDdDDDD',
-  'DDDDDDDDDDDDDDDD',
-];
-const DIRT = [
-  'DDDDDDDDDDDDDDDD',
-  'DDdDDDDDDDdDDDDD',
-  'DDDDDDeDDDDDDDDD',
-  'DDDDDDDDDdDDDDDD',
-  'DdDDDDDDDDDDDeDD',
-  'DDDDDDDDDDDDDDDD',
-  'DDDDeDDDDDDdDDDD',
-  'DDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDD',
-  'DDDDDDDDdDDDDDDD',
-  'DeDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDdDD',
-  'DDDDDDdDDDDDDDDD',
-  'DDDDDDDDDDDDDDDD',
-  'DDDdDDDDDDeDDDDD',
-  'DDDDDDDDDDDDDDDD',
-];
-const BUSH = [
-  '......KKKK......',
-  '....KKlGGGKK....',
-  '...KlGGGGGGGK...',
-  '..KlGGGGGGgGGK..',
-  '.KGGGGGGGGGgGGK.',
-  'KlGGGgGGGGGGgGGK',
-  'KGGGGGGGgGGGGGgK',
-  'KGgGGGGGGGGgGGgK',
-];
-const CLOUD = [
-  '..........KKKK..........',
-  '.....KKK.KWWWWK.........',
-  '....KWWWKWWWWWWK.KKK....',
-  '...KWWWWWWWWWWWWKWWWK...',
-  '.KKWWWWWWWWWWWWWWWWWWK..',
-  'KWWWWWWWWWWWWWWWWWWWWWK.',
-  'KWWwWWWWWWWWWWWWWWWwWWWK',
-  '.KwwwWWWwwWWWWwwWWwwwwK.',
-  '..KKKwwwKKwwwwKKwwwKKK..',
-  '.....KKK..KKKK..KKK.....',
-];
-const CLOUD_PAL = { K: '#7890c8', W: '#ffffff', w: '#d6e4f8' };
-// 100px ごとの目印の杭（速度感の確認用）
-const POST = [
-  '.KKKK.', 'KWWWWK', 'KWBBWK', 'KWWWWK', '.KKKK.',
-  '..Kx..', '..Kx..', '..Kx..', '..Kx..', '..Kx..', '..Kx..',
-];
-const POST_PAL = { ...TILE_PAL, W: '#fff8e0', B: '#4470d0' };
+export const TILE = { EMPTY: 0, GROUND: 1, STONE: 2, TURN: 3 };
+
+// ターンブロックを下から叩いたときの跳ね上がり（px、毎フレーム）
+const BOUNCE_OFFSETS = [-2, -4, -6, -7, -6, -4, -2, 0];
 
 export class Level {
   constructor() {
-    this.grass = gridToCanvas(GRASS, TILE_PAL);
-    this.dirt = gridToCanvas(DIRT, TILE_PAL);
-    this.bush = gridToCanvas(BUSH, TILE_PAL);
-    this.cloud = gridToCanvas(CLOUD, CLOUD_PAL);
-    this.post = gridToCanvas(POST, POST_PAL);
-    this.hills = this.makeHills();
+    this.tiles = new Uint8Array(TILES_W * TILES_H);
+    this.widthPx = LEVEL_W;
+    this.bounces = []; // {tx, ty, t}
+    this.spawns = [];  // {type: 'gift' | 'spiker', x, y}
+    this.build();
   }
 
-  makeHills() {
-    // 遠景の丘（512px 幅でループ）
-    const c = document.createElement('canvas');
-    c.width = 512;
-    c.height = 120;
-    const g = c.getContext('2d');
-    const layers = [
-      { col: '#9fd8a0', edge: '#78b880', base: 70, amp: 26, f: 2 },
-      { col: '#6cbc78', edge: '#4c9a5c', base: 90, amp: 18, f: 3 },
-    ];
-    for (const L of layers) {
-      for (let x = 0; x < 512; x++) {
-        const t = (x / 512) * Math.PI * 2;
-        const y = Math.round(L.base - Math.abs(Math.sin(t * L.f)) * L.amp - Math.sin(t * L.f * 2.3) * 4);
-        g.fillStyle = L.edge;
-        g.fillRect(x, y, 1, 2);
-        g.fillStyle = L.col;
-        g.fillRect(x, y + 2, 1, 120 - y);
-      }
-    }
-    return c;
+  set(tx, ty, v) { this.tiles[ty * TILES_W + tx] = v; }
+
+  fill(tx, ty, w, h, v) {
+    for (let y = ty; y < ty + h; y++) for (let x = tx; x < tx + w; x++) this.set(x, y, v);
   }
 
-  draw(g, camX, camY) {
-    // 空
-    const sky = g.createLinearGradient(0, 0, 0, SCREEN_H);
-    sky.addColorStop(0, '#5c94fc');
-    sky.addColorStop(1, '#a8d0ff');
-    g.fillStyle = sky;
-    g.fillRect(0, 0, SCREEN_W, SCREEN_H);
+  build() {
+    const groundRow = GROUND_Y / 16; // 24
+    this.fill(0, groundRow, TILES_W, TILES_H - groundRow, TILE.GROUND);
 
-    // 雲（1/4 スクロール）
-    const cx = Math.floor(camX / 4);
-    for (let i = -1; i < 4; i++) {
-      const base = Math.floor(cx / 128) * 128 + i * 128;
-      const seed = ((base / 128) * 7919) & 0xff;
-      g.drawImage(this.cloud, base - cx + (seed % 40), 20 + (seed % 50));
-    }
-    // 丘（1/2 スクロール）
-    const hx = Math.floor(camX / 2) % 512;
-    const hy = GROUND_Y - camY - 110;
-    g.drawImage(this.hills, -hx, hy);
-    g.drawImage(this.hills, 512 - hx, hy);
+    // 頭突きテスト：ターンブロック 5 個（地面の 3 タイル上）
+    this.fill(14, 20, 5, 1, TILE.TURN);
+    // スピンジャンプ破壊テスト：ターンブロックの柱（3 段 × 2 列）
+    this.fill(24, 21, 2, 3, TILE.TURN);
+    // 投げブロックを当てる石の壁（3 段）
+    this.fill(40, 21, 2, 3, TILE.STONE);
+    // 石の階段
+    for (let i = 0; i < 4; i++) this.fill(46 + i, groundRow - 1 - i, 1, i + 1, TILE.STONE);
+    // 空中のターンブロックの橋（高いジャンプ向け）
+    this.fill(60, 19, 6, 1, TILE.TURN);
+    this.fill(70, 22, 3, 2, TILE.TURN);
 
-    // 茂み・目印
-    const sx = Math.floor(camX);
-    for (let x = Math.floor((sx - 64) / 160) * 160; x < sx + SCREEN_W + 64; x += 160) {
-      if (x < 0) continue;
-      g.drawImage(this.bush, x + 40 - sx, GROUND_Y - camY - 8);
-    }
-    for (let x = Math.floor(sx / 100) * 100; x < sx + SCREEN_W + 8; x += 100) {
-      g.drawImage(this.post, x - 3 - sx, GROUND_Y - camY - 11);
-    }
+    const at = (tx, type, dy = 0) => this.spawns.push({ type, x: tx * 16, y: GROUND_Y - 16 + dy });
+    at(12, 'gift');
+    at(28, 'gift');
+    at(52, 'gift');
+    at(32, 'spiker');
+    at(37, 'spiker');
+    at(56, 'spiker');
+    at(66, 'spiker');
+    at(75, 'spiker');
+    at(77, 'gift');
+  }
 
-    // 地面
-    const tx0 = Math.floor(sx / 16);
-    for (let tx = tx0; tx <= tx0 + 17; tx++) {
-      const px = tx * 16 - sx;
-      for (let ty = GROUND_Y; ty < LEVEL_H; ty += 16) {
-        g.drawImage(ty === GROUND_Y ? this.grass : this.dirt, px, ty - camY);
-      }
-    }
+  tileAt(tx, ty) {
+    if (tx < 0 || tx >= TILES_W) return TILE.EMPTY;
+    if (ty < 0) return TILE.EMPTY;
+    if (ty >= TILES_H) return TILE.GROUND;
+    return this.tiles[ty * TILES_W + tx];
+  }
+
+  tileAtPx(x, y) { return this.tileAt(Math.floor(x / 16), Math.floor(y / 16)); }
+
+  solidPx(x, y) { return this.tileAtPx(x, y) !== TILE.EMPTY; }
+
+  // スピンジャンプなどでターンブロックを壊す。壊れたら true
+  breakTurn(tx, ty) {
+    if (this.tileAt(tx, ty) !== TILE.TURN) return false;
+    this.set(tx, ty, TILE.EMPTY);
+    return true;
+  }
+
+  // ターンブロックが叩かれて跳ねる（見た目だけ）
+  bounceTile(tx, ty) {
+    if (this.tileAt(tx, ty) !== TILE.TURN) return;
+    if (this.bounces.some((b) => b.tx === tx && b.ty === ty)) return;
+    this.bounces.push({ tx, ty, t: 0 });
+  }
+
+  bounceOffset(tx, ty) {
+    const b = this.bounces.find((e) => e.tx === tx && e.ty === ty);
+    return b ? BOUNCE_OFFSETS[b.t] : 0;
+  }
+
+  update() {
+    for (const b of this.bounces) b.t++;
+    this.bounces = this.bounces.filter((b) => b.t < BOUNCE_OFFSETS.length);
   }
 }
 
