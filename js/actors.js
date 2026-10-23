@@ -298,8 +298,7 @@ export class Shell extends Throwable {
       this.state = 'idle'; // 01AA0B：気絶状態に戻る（床で速度が半分ずつになり止まる）
       return;
     }
-    const dir = hb.x + 6 > p.xpos + 8 ? 1 : -1;
-    if (p.hurt(dir)) w.onPlayerHurt();
+    if (p.hurt()) w.onPlayerHurt();
   }
 }
 
@@ -353,8 +352,7 @@ export class Spiker extends Sprite {
       w.emit('bounce');
       return;
     }
-    const dir = hb.x + 6 > p.xpos + 8 ? 1 : -1;
-    if (p.hurt(dir)) w.onPlayerHurt();
+    if (p.hurt()) w.onPlayerHurt();
   }
 
   // 飛んできたブロックに倒される

@@ -339,16 +339,12 @@ export class Player {
     this.yspeed = (this.in.hold1 & PAD.B) ? BOOST_HOLD_B : BOOST_NORMAL;
   }
 
-  // ダメージ。受けたら true（無敵中は false）。dir は敵がいる向き（+1 右, -1 左）
-  hurt(dir) {
+  // ダメージ (DamagePlayer_Hurt, 00F5B7)。受けたら true（無敵中は false）。
+  // SMW にノックバックは無い。速度はそのままで、一定時間無敵になって点滅する。
+  // （SMW では大きい状態だと縮むが、ルミナは今のところ縮まない）
+  hurt() {
     if (this.hurtTimer) return false;
     this.hurtTimer = HURT_TIME;
-    this.xspeed = u8(dir > 0 ? -0x18 : 0x18);
-    this.subXspeed = 0;
-    this.yspeed = 0xe0; // -32
-    this.inAir = AIR_FALL;
-    this.spin = 0;
-    this.ducking = 0;
     return true;
   }
 

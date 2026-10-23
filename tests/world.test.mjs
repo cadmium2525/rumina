@@ -336,8 +336,17 @@ function setupGift() {
   sh.xs = -0x2e;
   w.actors.push(sh);
   w.player.xpos = 100;
-  run(w, 60, () => [0]);
-  assert.ok(w.events.includes('hurt'), 'hurt by moving shell');
+  // 歩きながら当たっても、ノックバックせずそのまま進む（SMW にノックバックは無い）
+  let hurtAt = -1;
+  for (let f = 0; f < 60 && hurtAt < 0; f++) {
+    run(w, 1, () => [R]);
+    if (w.events.includes('hurt')) hurtAt = f;
+  }
+  assert.ok(hurtAt >= 0, 'hurt by moving shell');
+  const p = w.player;
+  assert.ok(p.hurtTimer > 0, 'invincible after hurt');
+  assert.ok(((p.xspeed << 24) >> 24) > 0, 'keeps walking forward (no knockback)');
+  assert.equal(p.inAir, 0, 'not knocked into the air');
 }
 {
   // 蹴られた甲羅を上から踏むと止まり、ルミナは跳ねる
