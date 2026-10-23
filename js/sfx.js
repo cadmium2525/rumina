@@ -65,4 +65,9 @@ export const sfx = {
   grab() { tone('triangle', 500, 760, 0.08, 0.09); },
   throw() { tone('triangle', 700, 260, 0.14, 0.09); },
   kick() { tone('square', 300, 180, 0.08, 0.08); },
+  swim() { tone('triangle', 260, 520, 0.12, 0.08); },
+  splash() {
+    noise(0.25, 0.1);
+    tone('sine', 700, 200, 0.2, 0.05);
+  },
 };

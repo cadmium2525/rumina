@@ -1,7 +1,7 @@
 // ゲーム世界：レベル・プレイヤー・スプライト・エフェクトをまとめて 1 フレーム進める。
 // DOM に依存しない（描画は main.js / *_view.js）。
 import { Player } from './player.js';
-import { Level, Camera, GROUND_Y, SCREEN_W, LEVEL_H } from './level.js';
+import { Level, Camera, GROUND_Y, SCREEN_W, LEVEL_H, TILE } from './level.js';
 import { GiftBox, Shell, Spiker } from './actors.js';
 import { BRICK_X, BRICK_Y, BRICK_XSPEED, BRICK_YSPEED } from './smw_tables.js';
 
@@ -72,6 +72,7 @@ export class World {
 
     for (const s of this.player.smokeRequests) this.effects.push({ kind: 'smoke', x: s.x, y: s.y, t: 19 });
     this.player.smokeRequests.length = 0;
+    this.waterEffects();
 
     this.updateSpawns();
     for (const a of this.actors) a.update(this);
@@ -103,6 +104,23 @@ export class World {
     }
   }
 
+  // 水しぶきと息の泡（見た目だけ）
+  waterEffects() {
+    const p = this.player;
+    if (this.events.includes('splash') && !this._splashed) {
+      // 水面の高さを探す
+      const lv = this.level;
+      const cx = p.xpos + 8;
+      let ty = Math.floor((p.ypos + 0x12) / 16);
+      while (ty > 0 && lv.tileAt(Math.floor(cx / 16), ty - 1) === TILE.WATER) ty--;
+      this.effects.push({ kind: 'splash', x: p.xpos, y: ty * 16 - 12, t: 16 });
+    }
+    this._splashed = this.events.includes('splash');
+    if (p.swimming && (p.var8a & 2) && (this.frame & 63) === 0) {
+      this.effects.push({ kind: 'bubble', x: p.xpos + (p.facing ? 11 : 2), y: p.ypos + 6, t: 1 });
+    }
+  }
+
   updateEffects() {
     const cx = this.camera.x;
     for (const e of this.effects) {
@@ -113,6 +131,11 @@ export class World {
         if (!(this.frame & 3)) e.ys++;
         if (e.y > LEVEL_H + 16 || e.x < cx - 16 || e.x > cx + SCREEN_W + 16) e.t = 0;
         else e.t = 1;
+      } else if (e.kind === 'bubble') {
+        // 水面まで上がって消える
+        e.y -= 1;
+        if (this.frame & 1) e.x += (this.frame & 16) ? 1 : -1;
+        e.t = this.level.tileAtPx(e.x + 2, e.y + 2) === TILE.WATER ? 1 : 0;
       } else {
         e.t--;
       }

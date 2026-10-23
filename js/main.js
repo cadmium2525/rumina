@@ -27,7 +27,7 @@ let showDebug = false;
 // ゲーム内イベント → 効果音と触覚フィードバック
 const HAPTIC_OF = {
   break: 'medium', shatter: 'medium', bounce: 'medium', hurt: 'heavy',
-  bump: 'light', grab: 'light', throw: 'light', kick: 'light',
+  bump: 'light', grab: 'light', throw: 'light', kick: 'light', splash: 'light',
 };
 
 function step() {
@@ -88,7 +88,10 @@ function render() {
   for (const e of world.effects) {
     if (e.kind === 'piece') actorSprites.drawPiece(g, e, world.frame, e.x - camX, e.y - camY);
     else if (e.kind === 'star') actorSprites.drawStar(g, e, e.x - camX, e.y - camY);
+    else if (e.kind === 'bubble') actorSprites.drawBubble(g, e.x - camX, e.y - camY);
+    else if (e.kind === 'splash') actorSprites.drawSplash(g, e, e.x - camX, e.y - camY);
   }
+  view.drawWater(g, world.level, camX, camY, world.frame);
 
   drawPMeter();
   if (paused) {

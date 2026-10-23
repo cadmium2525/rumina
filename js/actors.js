@@ -1,10 +1,10 @@
 // ブロック・敵などのスプライト。SMW のスプライト処理（bank 01）を移植している。
 // 速度は 1/16 px/frame、座標は 1px 単位（左上）。DOM に依存しない。
-import { LEVEL_H, SCREEN_W } from './level.js';
+import { LEVEL_H, SCREEN_W, TILE, isSlope, slopeK } from './level.js';
 import { PAD } from './player.js';
 import {
   SHELL_X_SPEED, PLACED_X_OFFSET, PLACED_X_SPEED, CARRIED_X_OFFSET,
-  SPR_GRAVITY, SPR_MAX_FALL, STUN_BOUNCE,
+  SPR_GRAVITY, SPR_MAX_FALL, STUN_BOUNCE, SLOPE_SHAPE,
 } from './smw_tables.js';
 
 const u8 = (v) => v & 0xff;
@@ -53,15 +53,39 @@ class Sprite {
   }
 
   moveX() {
-    const t = this.subX + u8(this.xs * 16);
+    // 水中では横の速さが 3/4 になる (019032)
+    const xs = this.inWater ? (this.xs >> 1) + (this.xs >> 2) : this.xs;
+    const t = this.subX + u8(xs * 16);
     this.subX = t & 0xff;
-    this.x += (this.xs >> 4) + (t >> 8);
+    this.x += (xs >> 4) + (t >> 8);
   }
 
   // HandleNormalSpriteGravity (019032) の加速部分
   gravity() {
-    const v = this.ys + SPR_GRAVITY;
-    this.ys = v >= SPR_MAX_FALL ? SPR_MAX_FALL : v;
+    // 水中は重力 1・落下の上限 0x10 (kHandleNormalSpriteGravity_YAcceleration/MaxYSpeed[1])
+    if (this.inWater && this.ys <= -25) this.ys = -24;
+    const v = this.ys + (this.inWater ? 1 : SPR_GRAVITY);
+    const max = this.inWater ? 0x10 : SPR_MAX_FALL;
+    this.ys = v >= max ? max : v;
+  }
+
+  // 足元の坂の表面の y（坂でなければ null）。坂の真下の地面にいる時は上の坂を見る
+  slopeSurface(level) {
+    const cx = this.x + 8;
+    const by = this.y + 16;
+    let tx = Math.floor(cx / 16);
+    let ty = Math.floor(by / 16);
+    let t = level.tileAt(tx, ty);
+    if (!isSlope(t)) {
+      const up = level.tileAt(tx, ty - 1);
+      if (isSlope(up)) {
+        t = up;
+        ty--;
+      } else {
+        return null;
+      }
+    }
+    return ty * 16 + SLOPE_SHAPE[16 * slopeK(t) + (cx & 15)];
   }
 
   // 壁・床・天井との接触。床は押し戻して ys を変えない（呼び出し側で扱う）
@@ -78,10 +102,18 @@ class Sprite {
         break;
       }
     }
-    if (this.ys >= 0) {
+    const surf = this.slopeSurface(level);
+    if (surf !== null) {
+      // 坂：表面に沿って歩く（下り坂でも離れないよう、床にいたら少し下まで吸い付く）
+      const by = this.y + 16;
+      if (this.ys >= 0 && by >= surf - (this.onFloor ? 6 : 0) && by - surf < 12) {
+        f.floor = true;
+        this.y = surf - 16;
+      }
+    } else if (this.ys >= 0) {
       const fy = this.y + 16;
       for (const px of [this.x + 4, this.x + 11]) {
-        if (level.solidPx(px, fy) && (fy & 15) < 8) {
+        if (level.floorPx(px, fy) && (fy & 15) < 8 && !isSlope(level.tileAtPx(px, fy - 16))) {
           f.floor = true;
           this.y = Math.floor(fy / 16) * 16 - 16;
           break;
@@ -94,6 +126,7 @@ class Sprite {
       this.y = (f.ty + 1) * 16;
     }
     this.onFloor = f.floor;
+    this.inWater = level.tileAtPx(this.x + 8, this.y + 8) === TILE.WATER;
     return f;
   }
 
@@ -321,6 +354,14 @@ export class Shell extends Throwable {
       this.state = 'idle'; // 01AA0B：気絶状態に戻る（床で速度が半分ずつになり止まる）
       return;
     }
+    if (p.sliding) {
+      // 滑っているルミナに当たると消える (01A847)
+      w.star(this.x, this.y);
+      w.effects.push({ kind: 'smoke', x: this.x + 4, y: this.y + 4, t: 19 });
+      w.emit('kick');
+      this.dead = true;
+      return;
+    }
     if (p.hurt()) w.onPlayerHurt();
   }
 }
@@ -373,6 +414,13 @@ export class Spiker extends Sprite {
       p.boost(); // 01A8D8
       w.star(p.xpos + 4, p.ypos + 0x1c);
       w.emit('bounce');
+      return;
+    }
+    if (!above && p.sliding) {
+      // 滑っているルミナに当たると倒れる (01A847)
+      this.kill(this.playerIsLeft(p) ? 1 : -1);
+      w.star(this.x, this.y);
+      w.emit('kick');
       return;
     }
     if (p.hurt()) w.onPlayerHurt();

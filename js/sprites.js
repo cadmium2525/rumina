@@ -64,6 +64,10 @@ const POSE_FRAME = {
   [POSE.CARRY0]: 'carry', [POSE.CARRY1]: 'carry_walk1', [POSE.CARRY2]: 'carry_walk2',
   [POSE.CARRY_UP]: 'carry', [POSE.PICKUP]: 'duck_carry', [POSE.CARRY_JUMP]: 'carry_jump',
   [POSE.KICK]: 'kick',
+  [POSE.CLIMB]: 'climb', [POSE.SLIDE]: 'slide',
+  // 泳ぎ：水をかく 2 コマと、浮いているコマ（持っている時は持ったまま）
+  [POSE.SWIM_A]: 'fall', [POSE.SWIM_B]: 'runjump', [POSE.SWIM]: 'jump',
+  [POSE.SWIM_A_CARRY]: 'carry_jump', [POSE.SWIM_B_CARRY]: 'carry_jump', [POSE.SWIM_CARRY]: 'carry_jump',
 };
 
 export class RuminaSprite {
@@ -155,5 +159,24 @@ export class ActorSprites {
 
   drawStar(g, e, x, y) {
     g.drawImage(this.stars[(e.t >> 1) & 1], x, y);
+  }
+
+  drawBubble(g, x, y) {
+    g.fillStyle = '#ffffff';
+    g.fillRect(x + 1, y, 2, 1);
+    g.fillRect(x, y + 1, 1, 2);
+    g.fillRect(x + 3, y + 1, 1, 2);
+    g.fillRect(x + 1, y + 3, 2, 1);
+  }
+
+  // 水しぶき：左右に跳ねる白い粒
+  drawSplash(g, e, x, y) {
+    const t = 16 - e.t;
+    g.fillStyle = '#ffffff';
+    const h = Math.max(0, 8 - Math.abs(t - 6));
+    for (const [dx, k] of [[-2, 1], [4, 0], [10, 1], [16, 0]]) {
+      const yy = y + 12 - h - k * 2;
+      g.fillRect(x + dx + (dx < 8 ? -t >> 2 : t >> 2), yy, 2, 2);
+    }
   }
 }
