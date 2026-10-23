@@ -14,6 +14,24 @@ export function overlap(a, b) {
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 }
 
+// プレイヤーとスプライトの接触 (StandardSpriteToSpriteCollisionChecks_CheckContact, 03B72B)。
+// 端がちょうど触れている場合も接触とみなす
+export function touchesPlayer(p, b) {
+  const a = p.hitbox;
+  return a.x <= b.x + b.w && b.x <= a.x + a.w && a.y <= b.y + b.h && b.y <= a.y + a.h;
+}
+
+// 上から踏んだか (01A80F)。次のどれかならダメージ側になる：
+//  ・プレイヤーの y が「スプライトの当たり判定の上端 - 20」より下（足が上端 +12 より下）
+//  ・上昇中で、まだ何も踏んでいない（連続踏み中は上昇中でも踏める）
+//  ・スプライトが床にいて、プレイヤーも地上にいる
+export function stompsFromAbove(p, hb, spriteOnFloor) {
+  if (p.ypos > hb.y - 20) return false;
+  if ((p.yspeed & 0x80) && !p.stompCount) return false;
+  if (spriteOnFloor && !p.inAir) return false;
+  return true;
+}
+
 class Sprite {
   constructor(x, y) {
     this.x = x;
@@ -75,6 +93,7 @@ class Sprite {
       f.ty = Math.floor(this.y / 16);
       this.y = (f.ty + 1) * 16;
     }
+    this.onFloor = f.floor;
     return f;
   }
 
@@ -125,7 +144,7 @@ class Throwable extends Sprite {
       this.rebound(w, f);
       return;
     }
-    if (!this.contactTimer && overlap(w.player.hitbox, this.hitbox)) {
+    if (!this.contactTimer && touchesPlayer(w.player, this.hitbox)) {
       this.contactTimer = 8;
       const p = w.player;
       if (this.spinKillable && p.spin && !(p.yspeed & 0x80)) {
@@ -138,7 +157,8 @@ class Throwable extends Sprite {
         p.pickPoseTimer = 8;
         w.emit('grab');
       } else {
-        // 蹴り飛ばす
+        // 蹴り飛ばす（01AB46：連続踏みの数も増える）
+        p.stompCount++;
         this.state = 'kicked';
         this.xs = s8(SHELL_X_SPEED[this.playerIsLeft(p) ? 1 : 0]);
         this.contactTimer = 16;
@@ -167,7 +187,7 @@ class Throwable extends Sprite {
         w.emit('kick');
       }
     }
-    if (!this.contactTimer && overlap(w.player.hitbox, this.hitbox)) {
+    if (!this.contactTimer && touchesPlayer(w.player, this.hitbox)) {
       this.contactTimer = 8;
       this.touchPlayerKicked(w);
     }
@@ -179,6 +199,7 @@ class Throwable extends Sprite {
   spinKill(w) {
     const p = w.player;
     p.yspeed = 0xf8; // -8
+    p.stompCount++;
     w.star(p.xpos + 4, p.ypos + 0x1c);
     w.effects.push({ kind: 'smoke', x: this.x + 4, y: this.y + 4, t: 19 });
     w.emit('bounce');
@@ -225,10 +246,11 @@ class Throwable extends Sprite {
       v1 += 2;
       if (p.facePoseTimer >= 5) v1++;
     }
-    // しゃがみ中・持ち上げ中は足元で抱える（SMW は +2px 下げる。ルミナの顔が隠れないよう少し前に出す）
+    // 高さは SMW と同じ +13（しゃがみ・持ち上げ中は +15）。
+    // しゃがみ中だけ、ルミナの顔が隠れないよう横位置を 4px 前に出している（見た目のみ）
     const low = p.ducking || p.pickPoseTimer;
     this.x = p.xpos + (low && v1 < 2 ? (v1 ? -15 : 15) : CARRIED_X_OFFSET[v1]);
-    this.y = p.ypos + (low ? 16 : 8);
+    this.y = p.ypos + (low ? 15 : 13);
     this.xs = 0;
     this.ys = 0;
     this.subX = 0;
@@ -272,7 +294,8 @@ export class Shell extends Throwable {
     this.spinKillable = true;
   }
 
-  get hitbox() { return { x: this.x + 1, y: this.y + 3, w: 14, h: 13 }; }
+  // SMW のスプライト当たり判定 0 番 (SprClippingDispX/Y, Width/Height)
+  get hitbox() { return { x: this.x + 2, y: this.y + 3, w: 12, h: 10 }; }
 
   // MakeNormalSpriteReboundOffWall (01999E)：向きを反転し、壁のブロックを叩く
   rebound(w, f) {
@@ -285,14 +308,14 @@ export class Shell extends Throwable {
   // CheckPlayerToNormalSpriteColl_01A80F：上から踏むと止まる（スピンなら消える）。横からはダメージ
   touchPlayerKicked(w) {
     const p = w.player;
-    const hb = this.hitbox;
-    const above = !(p.yspeed & 0x80) && p.ypos + 0x20 <= hb.y + 10;
+    const above = stompsFromAbove(p, this.hitbox, this.onFloor);
     if (above && p.spin) {
       this.spinKill(w);
       return;
     }
     if (above) {
       p.boost(); // 01A8D8
+      p.stompCount++; // 01AB46
       w.star(p.xpos + 4, p.ypos + 0x1c);
       w.emit('kick');
       this.state = 'idle'; // 01AA0B：気絶状態に戻る（床で速度が半分ずつになり止まる）
@@ -312,7 +335,8 @@ export class Spiker extends Sprite {
     this.xs = -8;
   }
 
-  get hitbox() { return { x: this.x + 2, y: this.y + 4, w: 12, h: 12 }; }
+  // SMW のスプライト当たり判定 0 番 (SprClippingDispX/Y, Width/Height)
+  get hitbox() { return { x: this.x + 2, y: this.y + 3, w: 12, h: 10 }; }
 
   update(w) {
     if (this.contactTimer) this.contactTimer--;
@@ -334,7 +358,7 @@ export class Spiker extends Sprite {
       this.facing ^= 1;
       this.xs = this.facing ? 8 : -8;
     }
-    if (!this.contactTimer && overlap(w.player.hitbox, this.hitbox)) {
+    if (!this.contactTimer && touchesPlayer(w.player, this.hitbox)) {
       this.contactTimer = 8;
       this.touchPlayer(w);
     }
@@ -344,10 +368,9 @@ export class Spiker extends Sprite {
   // CheckPlayerToNormalSpriteColl_01A80F：上からスピンジャンプなら跳ね返る。それ以外はダメージ
   touchPlayer(w) {
     const p = w.player;
-    const hb = this.hitbox;
-    const above = !(p.yspeed & 0x80) && p.ypos + 0x20 <= hb.y + 10;
+    const above = stompsFromAbove(p, this.hitbox, this.onFloor);
     if (above && p.spin) {
-      p.boost();
+      p.boost(); // 01A8D8
       w.star(p.xpos + 4, p.ypos + 0x1c);
       w.emit('bounce');
       return;

@@ -21,6 +21,19 @@ const STAND_Y = GROUND_Y - 0x20;
   assert.ok(log.some((l) => l.y === 23 * 16 - 0x20 && l.x > 160 - 0xe), 'climbs on step and stands on it');
 }
 
+// ---- 頭の判定は足元から 24px 上 (y+8)：ブロック下端との間が 24px あれば頭はぶつからない ----
+{
+  const w = makeWorld();
+  w.level.fill(4, 22, 3, 1, TILE.STONE); // 下端 y=368、地面まで 16px
+  w.player.xpos = 100;
+  run(w, 10, () => [0]);
+  // 頭上に石。ジャンプすると y+8 が 367 に止まる
+  w.player.xpos = 5 * 16;
+  const log = run(w, 30, (f) => [f >= 1 ? B : 0]);
+  const minY = Math.min(...log.map((l) => l.y));
+  assert.equal(minY, STAND_Y, 'cannot rise: block bottom is only 16px above the head point');
+}
+
 // ---- 頭突き：クルクルブロック（叩くと回転してすり抜けられ、約 4.3 秒で戻る） ----
 {
   const w = makeWorld();
@@ -33,9 +46,9 @@ const STAND_Y = GROUND_Y - 0x20;
     if (hitFrame < 0 && w.events.includes('bump')) hitFrame = f;
   }
   assert.ok(hitFrame >= 0, 'bump event');
-  // 頭が天井で止まった（頭の判定点 y+3 がブロック下端の中）
+  // 頭が天井で止まった（頭の判定点 y+8 がブロック下端の 1px 内側まで）
   const minY = Math.min(...log.map((l) => l.y));
-  assert.ok(minY + 3 <= 21 * 16 - 1 && minY + 3 >= 21 * 16 - 8, `head stopped at ${minY}`);
+  assert.ok(minY + 8 <= 21 * 16 - 1 && minY + 8 >= 21 * 16 - 6, `head stopped at ${minY}`);
   // 跳ね終わると回転を始める（壊れはしない）
   assert.equal(w.level.tileAt(5, 20), TILE.SPIN, 'spinning');
   assert.ok(!w.level.solidPx(5 * 16 + 8, 20 * 16 + 8), 'spinning block is passable');
@@ -189,7 +202,7 @@ function setupGift() {
   const p = w.player;
   assert.ok(p.ducking, 'ducking while carrying');
   assert.equal(p.pose, 0x1d, 'duck-carry pose');
-  assert.equal(g.y, p.ypos + 16, 'box held low');
+  assert.equal(g.y, p.ypos + 15, 'box held low (SMW +15)');
   // ↓ を押しながら Y を離すとそっと置く（その場に残る）
   run(w, 1, () => [PAD.DOWN]);
   assert.equal(g.state, 'idle', 'placed');

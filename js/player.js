@@ -65,6 +65,7 @@ export class Player {
     this.kickPoseTimer = 0;   // 投げ/蹴りポーズ ($149C)
     this.pickPoseTimer = 0;   // 持ち上げポーズ ($149B)
     this.hurtTimer = 0;       // ダメージ後の無敵 ($1497)
+    this.stompCount = 0;      // 連続で踏んだ数 ($1697)。着地で 0 に戻る
     this.smokeRequests = [];
   }
 
@@ -137,24 +138,30 @@ export class Player {
     }
   }
 
-  // RunPlayerBlockCode (00EADB〜)：体の 6 点でタイルを調べる。
-  // 立ち：横(下)=y+0x18 横(上)=y+0x09 頭=y+3 足=y+0x20（x は体の左右で切り替え）
-  // しゃがみ：横=y+0x1A/0x16 頭=y+0x10
+  // RunPlayerBlockCode (00EADB〜)：体の 6 点でタイルを調べる (kGetPlayerLevelCollisionMap16ID_DATA_00E832/E89C)。
+  // 立ち：中心=y+0x12 横(下)=y+0x1A 横(上)=y+0x0F 頭=y+0x08 足=y+0x20（x は体の左右で切り替え）
+  // しゃがみ：中心=y+0x18 横=y+0x1A/0x16 頭=y+0x10
   tileCollision() {
     const { level } = this.env;
     const wasAir = this.inAir; // temp8f
     const duck = this.ducking;
-    const sideLo = duck ? 0x1a : 0x18;
-    const sideHi = duck ? 0x16 : 0x09;
-    const headOff = duck ? 0x10 : 0x03;
+    const center = duck ? 0x18 : 0x12;
+    const sideLo = 0x1a;
+    const sideHi = duck ? 0x16 : 0x0f;
+    const headOff = duck ? 0x10 : 0x08;
     const x = this.xpos;
     const hd = (x & 0xf) >= 8 ? 1 : 0; // タイル内の左右どちらにいるか
 
-    // 横：タイル内の位置に応じて片側だけ調べる (00EBF0 付近)
-    const sx = x + (hd ? 2 : 0xe);
-    if (level.solidPx(sx, this.ypos + sideLo) || level.solidPx(sx, this.ypos + sideHi)) {
-      this.animSpeedIndex = 3;
-      if ((x & 0xf) !== (hd ? 0xd : 2)) this.blocked |= hd ? 2 : 1;
+    if (level.solidPx(x + 8, this.ypos + center)) {
+      // 体の中心がブロックに埋まっている：左へ押し出す (00EB9B〜, E90A[v4])
+      this.blocked |= level.tileAtPx(x + 8, this.ypos + center) === TILE.TURN ? 0x01 : 0x11;
+    } else {
+      // 横：タイル内の位置に応じて片側だけ調べる (00EBF0 付近)
+      const sx = x + (hd ? 2 : 0xe);
+      if (level.solidPx(sx, this.ypos + sideLo) || level.solidPx(sx, this.ypos + sideHi)) {
+        this.animSpeedIndex = 3;
+        if ((x & 0xf) !== (hd ? 0xd : 2)) this.blocked |= hd ? 2 : 1;
+      }
     }
 
     // 頭 (00EC4E 付近)
@@ -206,6 +213,7 @@ export class Player {
       this.inAir = 0;
       this.spin = 0;
       this.blocked |= 4;
+      this.stompCount = 0; // counter_consecutive_enemies_stomped
       return;
     }
     this.airCheck();
