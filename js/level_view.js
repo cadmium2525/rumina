@@ -1,6 +1,7 @@
 // ステージの描画（背景・タイル）
 import { gridToCanvas } from './sprites.js';
-import { PAL_OBJ, TURN, STONE, QUESTION, USED } from './art.js';
+import * as ART from './art.js';
+import { PAL_OBJ, TURN, STONE, QUESTION, USED, PAL_STAGE } from './art.js';
 import { SCREEN_W, SCREEN_H, GROUND_Y, TILE, isSlope, slopeK, isCeilingSlope } from './level.js';
 import { SLOPE_SHAPE } from './smw_tables.js';
 
@@ -68,6 +69,28 @@ const CLOUD = [
   '.....KKK..KKKK..KKK.....',
 ];
 const CLOUD_PAL = { K: '#7890c8', W: '#ffffff', w: '#d6e4f8' };
+// テーマごとの地面の色（草地の絵の色を差し替える）
+const THEME_PAL = {
+  grass: TILE_PAL,
+  cave: { ...TILE_PAL, l: '#a898c8', G: '#7a6aa0', g: '#54467a', D: '#43385c', d: '#2e2642', e: '#5c4e7e' },
+  ruins: { ...TILE_PAL, l: '#fff0c0', G: '#e0c484', g: '#b49458', D: '#c8a466', d: '#9c7c44', e: '#e2c68a' },
+  castle: { ...TILE_PAL, l: '#d8d8e8', G: '#a4a4bc', g: '#76768e', D: '#5c5c74', d: '#44445a', e: '#70708a' },
+};
+// テーマごとの背景
+const SKY = {
+  grass: ['#5c94fc', '#a8d0ff'],
+  cave: ['#120c1e', '#2c2240'],
+  ruins: ['#f0905c', '#ffd8a0'],
+  castle: ['#18141e', '#302838'],
+};
+// 1 枚絵のタイル（テーマによらない）
+const STAGE_TILES = {
+  [TILE.LADDER]: 'LADDER', [TILE.CAVE_ROCK]: 'CAVE_ROCK', [TILE.CAVE_LEDGE]: 'CAVE_LEDGE',
+  [TILE.CRYSTAL]: 'CRYSTAL', [TILE.STALACTITE]: 'STALACTITE',
+  [TILE.RUIN_BRICK]: 'RUIN_BRICK', [TILE.RUIN_BLOCK]: 'RUIN_BLOCK', [TILE.RUIN_PILLAR]: 'RUIN_PILLAR',
+  [TILE.RUIN_LEDGE]: 'RUIN_LEDGE', [TILE.CASTLE_BRICK]: 'CASTLE_BRICK', [TILE.CASTLE_BLOCK]: 'CASTLE_BLOCK',
+  [TILE.CASTLE_LEDGE]: 'CASTLE_LEDGE', [TILE.SPIKE]: 'SPIKE', [TILE.WINDOW]: 'WINDOW',
+};
 // ツタ（上の端と途中）
 const VINE_TOP = [
   '......KKKK......',
@@ -114,8 +137,7 @@ const POST = [
 
 export class LevelView {
   constructor() {
-    this.grass = gridToCanvas(GRASS, TILE_PAL);
-    this.dirt = gridToCanvas(DIRT, TILE_PAL);
+    this.themes = {};
     this.bush = gridToCanvas(BUSH, TILE_PAL);
     this.cloud = gridToCanvas(CLOUD, CLOUD_PAL);
     this.post = gridToCanvas(POST, TILE_PAL);
@@ -127,18 +149,52 @@ export class LevelView {
     this.used = gridToCanvas(USED, PAL_OBJ);
     this.vineTop = gridToCanvas(VINE_TOP, TILE_PAL);
     this.vine = gridToCanvas(VINE, TILE_PAL);
-    this.slopes = {};
-    for (let k = 0; k < 32; k++) this.slopes[k] = this.makeSlope(k);
+    this.stage = {};
+    for (const [t, name] of Object.entries(STAGE_TILES)) this.stage[t] = gridToCanvas(ART[name], PAL_STAGE);
+    this.torch = [ART.TORCH_A, ART.TORCH_B].map((f) => gridToCanvas(f, PAL_STAGE));
+    this.lavaTop = gridToCanvas(ART.LAVA_TOP, PAL_STAGE);
+    this.lava = gridToCanvas(ART.LAVA, PAL_STAGE);
     this.hills = this.makeHills();
+    this.backdrops = {};
+    this.theme('grass');
+  }
+
+  // テーマごとの地面・坂の絵（初めて使う時に作る）
+  theme(name) {
+    if (!this.themes[name]) {
+      const pal = THEME_PAL[name] ?? TILE_PAL;
+      const slopes = {};
+      for (let k = 0; k < 32; k++) slopes[k] = this.makeSlope(k, pal);
+      this.themes[name] = { grass: gridToCanvas(GRASS, pal), dirt: gridToCanvas(DIRT, pal), slopes };
+    }
+    return this.themes[name];
+  }
+
+  // タイル 1 枚の絵。up = 上のタイル（草の有無・ツタの先・マグマの表面）
+  tileImage(t, themeName = 'grass', up = TILE.EMPTY, frame = 0) {
+    const th = this.theme(themeName);
+    if (t === TILE.GROUND || t === TILE.LEDGE) {
+      return up === TILE.EMPTY || up === TILE.VINE || up === TILE.WATER || up === TILE.LADDER ? th.grass : th.dirt;
+    }
+    if (t === TILE.STONE) return this.stone;
+    if (t === TILE.SPIN) return this.turnSpin[(frame >> 2) & 3];
+    if (t === TILE.TURN) return this.turn;
+    if (t === TILE.QUESTION) return this.question;
+    if (t === TILE.USED) return this.used;
+    if (t === TILE.VINE) return up === TILE.VINE ? this.vine : this.vineTop;
+    if (t === TILE.TORCH) return this.torch[(frame >> 3) & 1];
+    if (t === TILE.LAVA) return up === TILE.LAVA ? this.lava : this.lavaTop;
+    if (isSlope(t)) return th.slopes[slopeK(t)];
+    return this.stage[t] ?? null;
   }
 
   // 坂のタイル：表面の形 (SLOPE_SHAPE) に沿って草と土を描く
-  makeSlope(k) {
+  makeSlope(k, pal = TILE_PAL) {
     const c = document.createElement('canvas');
     c.width = 16;
     c.height = 16;
     const g = c.getContext('2d');
-    const col = (ch) => TILE_PAL[ch];
+    const col = (ch) => pal[ch];
     if (isCeilingSlope(TILE.SLOPE + k)) {
       // 天井の坂：上側が石。形の値 (負) の分だけ固い
       for (let x = 0; x < 16; x++) {
@@ -203,16 +259,85 @@ export class LevelView {
     return c;
   }
 
-  drawBackground(g, camX, camY) {
-    const sky = g.createLinearGradient(0, 0, 0, SCREEN_H);
-    sky.addColorStop(0, '#5c94fc');
-    sky.addColorStop(1, '#a8d0ff');
+  // テーマの遠景（512px 幅でループ）
+  backdrop(name) {
+    if (this.backdrops[name]) return this.backdrops[name];
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 224;
+    const g = c.getContext('2d');
+    const rnd = ((seed) => () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff))(7);
+    if (name === 'cave') {
+      // 鍾乳石の垂れた天井と、奥の岩
+      for (let x = 0; x < 512; x++) {
+        const t = (x / 512) * Math.PI * 2;
+        const top = 18 + Math.abs(Math.sin(t * 5)) * 22 + Math.sin(t * 13) * 5;
+        g.fillStyle = '#2a2040';
+        g.fillRect(x, 0, 1, top);
+        const bot = 150 + Math.sin(t * 3) * 18 + Math.abs(Math.sin(t * 9)) * 10;
+        g.fillStyle = '#251c38';
+        g.fillRect(x, bot, 1, 224 - bot);
+      }
+      for (let i = 0; i < 40; i++) {
+        g.fillStyle = rnd() < 0.5 ? '#6ad0e8' : '#b090f0';
+        g.globalAlpha = 0.5;
+        g.fillRect(Math.floor(rnd() * 512), Math.floor(40 + rnd() * 110), 1, 1);
+      }
+      g.globalAlpha = 1;
+    } else if (name === 'ruins') {
+      // 夕焼けの砂丘と崩れた柱の影
+      for (let x = 0; x < 512; x++) {
+        const t = (x / 512) * Math.PI * 2;
+        const y = 150 + Math.sin(t * 2) * 12 + Math.sin(t * 5) * 4;
+        g.fillStyle = '#c87850';
+        g.fillRect(x, y, 1, 224 - y);
+      }
+      g.fillStyle = '#a86048';
+      for (let i = 0; i < 6; i++) {
+        const x = 30 + i * 85 + Math.floor(rnd() * 20);
+        const h = 40 + Math.floor(rnd() * 50);
+        g.fillRect(x, 160 - h, 14, h);
+        g.fillRect(x - 3, 160 - h, 20, 5);
+        if (i % 2 === 0) g.fillRect(x + 14, 160 - h, 50, 6);
+      }
+    } else if (name === 'castle') {
+      // 奥のレンガの壁と、柱
+      g.fillStyle = '#2a2430';
+      g.fillRect(0, 0, 512, 224);
+      g.fillStyle = '#221c28';
+      for (let y = 0; y < 224; y += 8) {
+        g.fillRect(0, y, 512, 1);
+        for (let x = (y / 8) % 2 ? 0 : 8; x < 512; x += 16) g.fillRect(x, y, 1, 8);
+      }
+      for (let i = 0; i < 4; i++) {
+        const x = 40 + i * 128;
+        g.fillStyle = '#3a3242';
+        g.fillRect(x, 0, 20, 224);
+        g.fillStyle = '#463e50';
+        g.fillRect(x + 2, 0, 4, 224);
+      }
+    }
+    this.backdrops[name] = c;
+    return c;
+  }
+
+  drawBackground(g, camX, camY, theme = 'grass', w = SCREEN_W, h = SCREEN_H) {
+    const [top, bottom] = SKY[theme] ?? SKY.grass;
+    const sky = g.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, top);
+    sky.addColorStop(1, bottom);
     g.fillStyle = sky;
-    g.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    g.fillRect(0, 0, w, h);
+    if (theme !== 'grass') {
+      const img = this.backdrop(theme);
+      const by = h - SCREEN_H; // 遠景は画面の下に合わせる
+      for (let x = -(Math.floor(camX / 3) % 512); x < w; x += 512) g.drawImage(img, x, by);
+      return;
+    }
 
     // 雲（1/4 スクロール）
     const cx = Math.floor(camX / 4);
-    for (let i = -1; i < 4; i++) {
+    for (let i = -1; i < Math.ceil(w / 128) + 2; i++) {
       const base = Math.floor(cx / 128) * 128 + i * 128;
       const seed = ((base / 128) * 7919) & 0xff;
       g.drawImage(this.cloud, base - cx + (seed % 40), 20 + (seed % 50));
@@ -220,56 +345,57 @@ export class LevelView {
     // 丘（1/2 スクロール）
     const hx = Math.floor(camX / 2) % 512;
     const hy = GROUND_Y - camY - 110;
-    g.drawImage(this.hills, -hx, hy);
-    g.drawImage(this.hills, 512 - hx, hy);
+    for (let x = -hx; x < w; x += 512) g.drawImage(this.hills, x, hy);
 
     // 茂み・目印
     const sx = Math.floor(camX);
-    for (let x = Math.floor((sx - 64) / 160) * 160; x < sx + SCREEN_W + 64; x += 160) {
+    for (let x = Math.floor((sx - 64) / 160) * 160; x < sx + w + 64; x += 160) {
       if (x < 0) continue;
       g.drawImage(this.bush, x + 40 - sx, GROUND_Y - camY - 8);
     }
-    for (let x = Math.floor(sx / 100) * 100; x < sx + SCREEN_W + 8; x += 100) {
+    for (let x = Math.floor(sx / 100) * 100; x < sx + w + 8; x += 100) {
       g.drawImage(this.post, x - 3 - sx, GROUND_Y - camY - 11);
     }
   }
 
-  drawTiles(g, level, camX, camY, frame = 0) {
+  // w, h：描く範囲（エディタでは画面より大きい）
+  drawTiles(g, level, camX, camY, frame = 0, w = SCREEN_W, h = SCREEN_H) {
     this.frame = frame;
     const sx = Math.floor(camX);
     const tx0 = Math.floor(sx / 16);
     const ty0 = Math.max(0, Math.floor(camY / 16));
-    const ty1 = Math.ceil((camY + SCREEN_H) / 16);
+    const ty1 = Math.ceil((camY + h) / 16);
     for (let ty = ty0; ty <= ty1; ty++) {
-      for (let tx = tx0; tx <= tx0 + 17; tx++) {
+      for (let tx = tx0; tx <= tx0 + Math.ceil(w / 16) + 1; tx++) {
         const t = level.tileAt(tx, ty);
         if (t === TILE.EMPTY) continue;
         if (t === TILE.WATER) continue; // 水はスプライトの手前に描く (drawWater)
-        let img;
         const up = level.tileAt(tx, ty - 1);
-        if (t === TILE.GROUND || t === TILE.LEDGE) img = up === TILE.EMPTY || up === TILE.VINE || up === TILE.WATER ? this.grass : this.dirt;
-        else if (t === TILE.STONE) img = this.stone;
-        else if (t === TILE.SPIN) img = this.turnSpin[(this.frame >> 2) & 3];
-        else if (t === TILE.TURN) img = this.turn;
-        else if (t === TILE.QUESTION) img = this.question;
-        else if (t === TILE.USED) img = this.used;
-        else if (t === TILE.VINE) img = up === TILE.VINE ? this.vine : this.vineTop;
-        else if (isSlope(t)) img = this.slopes[slopeK(t)];
-        else continue;
-        g.drawImage(img, tx * 16 - sx, ty * 16 - camY + level.bounceOffset(tx, ty));
+        const img = this.tileImage(t, level.theme, up, frame);
+        if (!img) continue;
+        const x = tx * 16 - sx;
+        const y = ty * 16 - camY + level.bounceOffset(tx, ty);
+        if (t === TILE.LAVA) {
+          // マグマはゆっくり流れる
+          const o = (frame >> 3) & 15;
+          g.drawImage(img, o, 0, 16 - o, 16, x, y, 16 - o, 16);
+          if (o) g.drawImage(img, 0, 0, o, 16, x + 16 - o, y, o, 16);
+          continue;
+        }
+        g.drawImage(img, x, y);
       }
     }
   }
 
   // 水：半透明でスプライトの手前に重ねる。水面は波打つ
-  drawWater(g, level, camX, camY, frame = 0) {
+  drawWater(g, level, camX, camY, frame = 0, w = SCREEN_W, h = SCREEN_H) {
     const sx = Math.floor(camX);
     const tx0 = Math.floor(sx / 16);
     const ty0 = Math.max(0, Math.floor(camY / 16));
-    const ty1 = Math.ceil((camY + SCREEN_H) / 16);
+    const ty1 = Math.ceil((camY + h) / 16);
     g.save();
     for (let ty = ty0; ty <= ty1; ty++) {
-      for (let tx = tx0; tx <= tx0 + 17; tx++) {
+      for (let tx = tx0; tx <= tx0 + Math.ceil(w / 16) + 1; tx++) {
         if (level.tileAt(tx, ty) !== TILE.WATER) continue;
         const x = tx * 16 - sx;
         const y = ty * 16 - camY;

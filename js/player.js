@@ -10,7 +10,7 @@ import {
   SWIM_POSES, SWIM_YSPEED, WATER_JUMP_OUT, CLIMB_SPEED, JUMP_FROM_VINE, CLIMB_POSE,
   GROW_IMAGES, GROW_TIME, DEATH_TIME, DEATH_YSPEED, DEATH_POSE,
 } from './smw_tables.js';
-import { TILE, isSlope, slopeK, isCeilingSlope } from './level.js';
+import { TILE, isSlope, slopeK, isCeilingSlope, isClimbable } from './level.js';
 
 const u8 = (v) => v & 0xff;
 const s8 = (v) => ((v & 0xff) << 24) >> 24;
@@ -330,15 +330,20 @@ export class Player {
       this.touchTile(ct, 1);
       // 横：タイル内の位置に応じて片側だけ調べる (00EBF0 付近)
       const sx = x + (hd ? 2 : 0xe);
-      let hit = level.solidPx(sx, y + sideLo);
+      let sy = y + sideLo;
+      let hit = level.solidPx(sx, sy);
       if (!hit) {
-        this.touchVine(level.tileAtPx(sx, y + sideLo), 0x10);
-        hit = level.solidPx(sx, y + sideHi);
-        if (!hit) this.touchVine(level.tileAtPx(sx, y + sideHi), 0x08);
+        this.touchVine(level.tileAtPx(sx, sy), 0x10);
+        sy = y + sideHi;
+        hit = level.solidPx(sx, sy);
+        if (!hit) this.touchVine(level.tileAtPx(sx, sy), 0x08);
       }
       if (hit) {
         this.animSpeedIndex = 3;
-        if ((x & 0xf) !== (hd ? 0xd : 2)) this.blocked |= hd ? 2 : 1;
+        if ((x & 0xf) !== (hd ? 0xd : 2)) {
+          this.blocked |= hd ? 2 : 1;
+          this.hurtBlock(level.tileAtPx(sx, sy)); // 00F120：トゲに横から触れた
+        }
       }
     }
 
@@ -367,6 +372,7 @@ export class Player {
       this.touchTile(ht, 2);
     } else {
       const p = hy & 0xf;
+      this.hurtBlock(ht); // 頭がトゲに当たった
       if (ht !== TILE.TURN) {
         if (this.inAir || p >= 9) {
           if (this.inAir) this.ypos = u16(this.ypos + (15 - p));
@@ -408,6 +414,10 @@ export class Player {
     } else if (level.floorPx(f1, fy)) {
       this.landOnBlock(f1, fy, wasAir);
       return;
+    } else if (t1 === TILE.LAVA) {
+      // 足がマグマに入るとミス (LABEL_73：map16 の 5 番 → DamagePlayer_KillAndDisableButtons)
+      this.kill();
+      return;
     } else {
       // 足が水・ツタの中 (00F2C2(j, 4))
       this.touchTile(t1, 4);
@@ -426,9 +436,14 @@ export class Player {
     else this.touchVine(t, bit === 1 ? 0x19 : bit);
   }
 
-  // ツタ (00F2C9)
+  // ツタ・ハシゴ (00F2C9)
   touchVine(t, bits) {
-    if (t === TILE.VINE) this.var8b |= bits;
+    if (isClimbable(t)) this.var8b |= bits;
+  }
+
+  // ダメージを受けるブロック (RunPlayerBlockCode_CheckIfPlayerTouchingHurtBlock, 00F120)
+  hurtBlock(t) {
+    if (t === TILE.SPIKE && this.state === STATE.NORMAL) this.hurt();
   }
 
   // ふつうのブロックに着地 (LABEL_99 → 00EE3A → 00EE85)
@@ -450,6 +465,7 @@ export class Player {
       this.airCheck();
       return;
     }
+    this.hurtBlock(level.tileAt(tx, ty)); // トゲの上に乗った
     // 00EED1
     this.onGround++;
     this.ypos = u16(this.ypos - pib);

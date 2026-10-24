@@ -20,7 +20,18 @@ const smokeSprites = new SmokeSprites();
 const actorSprites = new ActorSprites();
 const debugEl = document.getElementById('debug');
 
-let world = new World();
+// ?level=custom ならエディタで作ったステージ（localStorage）を遊ぶ
+export const PLAY_KEY = 'rumina.play';
+function customLevel() {
+  if (new URLSearchParams(location.search).get('level') !== 'custom') return null;
+  try {
+    return JSON.parse(localStorage.getItem(PLAY_KEY));
+  } catch {
+    return null;
+  }
+}
+const levelData = customLevel();
+let world = new World(levelData);
 let paused = false;
 let showDebug = false;
 
@@ -70,7 +81,7 @@ function render() {
   const camX = Math.floor(world.camera.x);
   const camY = world.camera.y;
   const p = world.player;
-  view.drawBackground(g, camX, camY);
+  view.drawBackground(g, camX, camY, world.level.theme);
   // ブロックから出てくる途中の光の玉はブロックの後ろ
   for (const a of world.actors) {
     if (a.type === 'light' && a.emerge) actorSprites.drawActor(g, a, world.frame, a.x - camX, a.y - camY);
@@ -178,7 +189,7 @@ function toggleDebug() {
   debugEl.hidden = !showDebug;
 }
 function reset() {
-  world = new World();
+  world = new World(levelData);
   paused = false;
 }
 

@@ -27,10 +27,11 @@ body.portrait #stage { align-items: flex-start; padding-top: env(safe-area-inset
   display: flex; gap: 6px; z-index: 5;
 }
 #topbar button.off { opacity: 0.45; text-decoration: line-through; }
-#topbar button {
+#topbar button, #topbar a.tb {
   width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--edge);
   background: rgba(0, 0, 0, 0.35); color: #fff; font: bold 15px/1 system-ui; padding: 0;
 }
+#topbar a.tb { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; box-sizing: border-box; }
 #debug {
   position: fixed; left: calc(6px + env(safe-area-inset-left)); top: calc(24px + env(safe-area-inset-top));
   margin: 0; padding: 6px 8px; background: rgba(0, 0, 0, 0.6); border-radius: 6px;

@@ -13,7 +13,7 @@ export function makeWorld({ spawns = false, flat = true, power = 1 } = {}) {
   if (flat) {
     const lv = w.level;
     lv.tiles.fill(0);
-    lv.fill(0, GROUND_Y / 16, TILES_W, TILES_H - GROUND_Y / 16, TILE.GROUND);
+    lv.fill(0, GROUND_Y / 16, lv.width, TILES_H - GROUND_Y / 16, TILE.GROUND);
   }
   if (!spawns) w.points = [];
   return w;

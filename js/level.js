@@ -17,7 +17,20 @@ export const TILE = {
   // ？ブロック（下から叩くと中身が出る）と、叩いた後のブロック
   QUESTION: 8, USED: 9,
   SLOPE: 16,
+  // ハシゴ（ツタと同じ）
+  LADDER: 48,
+  // 洞窟
+  CAVE_ROCK: 49, CAVE_LEDGE: 50, CRYSTAL: 62, STALACTITE: 63,
+  // 遺跡
+  RUIN_BRICK: 51, RUIN_BLOCK: 52, RUIN_PILLAR: 53, RUIN_LEDGE: 54,
+  // お城
+  CASTLE_BRICK: 55, CASTLE_BLOCK: 56, CASTLE_LEDGE: 57, TORCH: 60, WINDOW: 61,
+  // トゲ（固い。触れるとダメージ：SMW のムンチャー/お城のトゲ）とマグマ（足が入るとミス）
+  SPIKE: 58, LAVA: 59,
 };
+export const TILE_COUNT = 64;
+// テーマ（背景と地面・坂の見た目）
+export const THEMES = ['grass', 'cave', 'ruins', 'castle'];
 // 使っている坂：ゆるい右上がり (k8,k9)・ゆるい右下がり (k10,k11)・45°右上がり (k12)・45°右下がり (k13)
 export const SLOPE_K = {
   UP_G1: 8, UP_G2: 9, DOWN_G1: 10, DOWN_G2: 11, UP_45: 12, DOWN_45: 13,
@@ -25,9 +38,16 @@ export const SLOPE_K = {
   CEIL_DOWN_45: 18, CEIL_UP_45: 19, CEIL_DOWN_G1: 20, CEIL_DOWN_G2: 21, CEIL_UP_G1: 22, CEIL_UP_G2: 23,
 };
 // ブロックとして固いか（坂は足元だけ特別扱いなので、横・頭・スプライトからは固くない）
-const SOLID = [false, true, true, true, false, false, false, false, true, true];
+const SOLID = new Array(TILE_COUNT).fill(false);
+for (const t of [TILE.GROUND, TILE.STONE, TILE.TURN, TILE.QUESTION, TILE.USED, TILE.CAVE_ROCK,
+  TILE.RUIN_BRICK, TILE.RUIN_BLOCK, TILE.CASTLE_BRICK, TILE.CASTLE_BLOCK, TILE.SPIKE]) SOLID[t] = true;
 // 足元だけ固い（上から乗れる）
-const FLOOR = [false, true, true, true, false, false, false, true, true, true];
+const FLOOR = SOLID.slice();
+for (const t of [TILE.LEDGE, TILE.CAVE_LEDGE, TILE.RUIN_LEDGE, TILE.CASTLE_LEDGE]) FLOOR[t] = true;
+// 上からだけ乗れる足場か
+export const isLedge = (t) => FLOOR[t] && !SOLID[t];
+// つかまって登れる（ツタ・ハシゴ）
+export const isClimbable = (t) => t === TILE.VINE || t === TILE.LADDER;
 export const isSlope = (t) => t >= TILE.SLOPE && t < TILE.SLOPE + 32;
 export const slopeK = (t) => t - TILE.SLOPE;
 // 天井の坂か（SLOPE_K.CEIL_*）
@@ -39,17 +59,88 @@ const BOUNCE_OFFSETS = [-4, -7, -8, -9, -8, -6, -3, 0];
 // 叩かれてから元のブロックに戻るまで（bounce_spr07_spinning_turn_block_despawn_timer = 0xFF）
 const SPIN_TIME = 256;
 
+export const MIN_WIDTH = 16;
+export const MAX_WIDTH = 1024;
+
 export class Level {
-  constructor() {
-    this.tiles = new Uint8Array(TILES_W * TILES_H);
-    this.widthPx = LEVEL_W;
+  // data: エディタで作ったステージ (toData() の形式)。無ければ標準のテストステージ
+  constructor(data = null) {
     this.bounces = []; // 叩かれたターンブロック {tx, ty, t}
     this.spawns = [];  // {type: 'gift' | 'shell' | 'spiker', x, y}
     this.contents = new Map(); // ？ブロックの中身 'tx,ty' → 'light'（光の玉）
-    this.build();
+    this.theme = 'grass';
+    this.start = { tx: 4, ty: GROUND_Y / 16 - 1 }; // スタート位置（足元のタイル）
+    if (data) {
+      this.load(data);
+    } else {
+      this.resize(TILES_W);
+      this.build();
+    }
   }
 
-  set(tx, ty, v) { this.tiles[ty * TILES_W + tx] = v; }
+  get widthPx() { return this.width * 16; }
+
+  // 幅を変える（右側を切る/空で足す）
+  resize(width) {
+    width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, width | 0));
+    const old = this.tiles;
+    const ow = this.width ?? 0;
+    this.width = width;
+    this.tiles = new Uint8Array(width * TILES_H);
+    if (old) {
+      for (let y = 0; y < TILES_H; y++) {
+        for (let x = 0; x < Math.min(ow, width); x++) this.tiles[y * width + x] = old[y * ow + x];
+      }
+    }
+    this.spawns = this.spawns.filter((s) => s.x < width * 16);
+    for (const k of [...this.contents.keys()]) if (+k.split(',')[0] >= width) this.contents.delete(k);
+    if (this.start.tx >= width) this.start.tx = width - 1;
+  }
+
+  // 保存用の形式：タイルは行ごとに並べて [値, 個数] の連長圧縮
+  toData() {
+    const rle = [];
+    for (let i = 0; i < this.tiles.length;) {
+      const v = this.tiles[i];
+      let n = 1;
+      while (i + n < this.tiles.length && this.tiles[i + n] === v) n++;
+      rle.push(v, n);
+      i += n;
+    }
+    return {
+      format: 'rumina-level', version: 1,
+      width: this.width, height: TILES_H, theme: this.theme,
+      start: { ...this.start },
+      tiles: rle,
+      spawns: this.spawns.map((s) => ({ type: s.type, tx: Math.floor(s.x / 16), ty: Math.floor(s.y / 16) })),
+      items: [...this.contents].map(([k, item]) => {
+        const [tx, ty] = k.split(',').map(Number);
+        return { tx, ty, item };
+      }),
+    };
+  }
+
+  load(d) {
+    if (!d || d.format !== 'rumina-level') throw new Error('ルミナのステージデータではありません');
+    this.width = 0;
+    this.tiles = null;
+    this.resize(d.width);
+    let i = 0;
+    for (let j = 0; j + 1 < d.tiles.length && i < this.tiles.length; j += 2) {
+      const v = d.tiles[j] < TILE_COUNT ? d.tiles[j] : 0;
+      for (let n = 0; n < d.tiles[j + 1] && i < this.tiles.length; n++) this.tiles[i++] = v;
+    }
+    this.theme = THEMES.includes(d.theme) ? d.theme : 'grass';
+    if (d.start) this.start = { tx: d.start.tx | 0, ty: d.start.ty | 0 };
+    this.spawns = (d.spawns ?? []).filter((s) => ['gift', 'shell', 'spiker'].includes(s.type))
+      .map((s) => ({ type: s.type, x: s.tx * 16, y: s.ty * 16 }));
+    this.contents = new Map((d.items ?? []).map((e) => [`${e.tx},${e.ty}`, e.item]));
+  }
+
+  set(tx, ty, v) {
+    if (tx < 0 || tx >= this.width || ty < 0 || ty >= TILES_H) return;
+    this.tiles[ty * this.width + tx] = v;
+  }
 
   fill(tx, ty, w, h, v) {
     for (let y = ty; y < ty + h; y++) for (let x = tx; x < tx + w; x++) this.set(x, y, v);
@@ -57,7 +148,7 @@ export class Level {
 
   build() {
     const groundRow = GROUND_Y / 16; // 24
-    this.fill(0, groundRow, TILES_W, TILES_H - groundRow, TILE.GROUND);
+    this.fill(0, groundRow, this.width, TILES_H - groundRow, TILE.GROUND);
 
     // 頭突きテスト：ターンブロック 5 個（地面の 3 タイル上）
     this.fill(14, 20, 5, 1, TILE.TURN);
@@ -153,10 +244,10 @@ export class Level {
   }
 
   tileAt(tx, ty) {
-    if (tx < 0 || tx >= TILES_W) return TILE.EMPTY;
+    if (tx < 0 || tx >= this.width) return TILE.EMPTY;
     if (ty < 0) return TILE.EMPTY;
     if (ty >= TILES_H) return TILE.EMPTY;
-    return this.tiles[ty * TILES_W + tx];
+    return this.tiles[ty * this.width + tx];
   }
 
   tileAtPx(x, y) { return this.tileAt(Math.floor(x / 16), Math.floor(y / 16)); }
@@ -211,8 +302,9 @@ export class Camera {
     this.x = 0;
     this.y = CAM_Y;
     this.relPos = 0x80; // $142A
+    this.scrollUp = 0;  // 着地したので上へスクロールしている ($13F1 flag_scroll_up_to_player)
   }
-  update(player) {
+  update(player, widthPx = LEVEL_W) {
     const scroll = [this.relPos - 12, this.relPos + 12];
     const r0 = player.xpos - this.x;
     const v = r0 - this.relPos < 0 ? 0 : 1;
@@ -221,7 +313,31 @@ export class Camera {
       // 00F8AB：向いている方向へのスクロールは 1px 先行させる
       if (player.facing === 1 && r2 > 0) r2 += 1;
       else if (player.facing === 0 && r2 < 0) r2 -= 1;
-      this.x = Math.max(0, Math.min(LEVEL_W - SCREEN_W, this.x + r2));
+      this.x = Math.max(0, Math.min(widthPx - SCREEN_W, this.x + r2));
     }
+    this.updateY(player);
+  }
+
+  // 縦スクロール (00F7F4、縦スクロール設定 1)。ルミナを画面の上から 100〜124px に保つ。
+  // 下へは 5px/フレームまで。上へは 3px/フレームまでで、空中では着地するまで待つ（ツタ・泳ぎ中は待たない）
+  updateY(player) {
+    const r0 = player.ypos - this.y;
+    let v = r0 - 112 >= 0 ? 1 : 0;
+    let r2 = r0 - [0x64, 0x7c][v];
+    if (v === 0 ? r2 >= 0 : r2 < 0) {
+      v = 1;
+      r2 = 0;
+    }
+    if (r2 < 0) {
+      if (!(player.climbing || (player.swimming && player.inAir)) && !this.scrollUp) {
+        if (player.inAir) return;
+        this.scrollUp = 1;
+      }
+    } else {
+      this.scrollUp = 0;
+    }
+    const lim = [-3, 5][v];
+    if (v === 0 ? r2 < lim : r2 > lim) r2 = lim;
+    this.y = Math.max(0, Math.min(CAM_Y, this.y + r2));
   }
 }

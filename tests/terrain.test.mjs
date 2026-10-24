@@ -194,3 +194,92 @@ function place(w, x, y) {
 }
 
 console.log('terrain: ok');
+{
+  // ハシゴはツタと同じ：↑でつかまって登れる
+  const w = makeWorld({ power: 1 });
+  w.level.fill(10, 14, 1, 10, TILE.LADDER);
+  const p = w.player;
+  p.xpos = 10 * 16;
+  run(w, 10, () => [PAD.UP]);
+  assert.ok(p.climbing, 'grabbed ladder');
+  const y0 = p.ypos;
+  run(w, 30, () => [PAD.UP]);
+  assert.equal(p.ypos, y0 - 30, 'climbs 1px/frame');
+  console.log('ladder: ok');
+}
+{
+  // トゲ：上に乗るとダメージ（大きければ縮む）
+  const w = makeWorld({ power: 1 });
+  w.level.fill(10, 24, 3, 1, TILE.SPIKE);
+  const p = w.player;
+  p.xpos = 9 * 16;
+  let st = 0;
+  for (let f = 0; f < 120 && !st; f++) { run(w, 1, () => [PAD.RIGHT]); st = p.state; }
+  assert.equal(st, 1, 'shrinks on spikes');
+  // 横から触れてもダメージ
+  const w2 = makeWorld({ power: 1 });
+  w2.level.fill(10, 23, 1, 1, TILE.SPIKE);
+  w2.player.xpos = 7 * 16;
+  st = 0;
+  for (let f = 0; f < 120 && !st; f++) { run(w2, 1, () => [PAD.RIGHT]); st = w2.player.state; }
+  assert.equal(st, 1, 'hurt from the side');
+  assert.ok(w2.player.xpos < 10 * 16, 'spike is solid');
+  console.log('spike: ok');
+}
+{
+  // マグマ：足が入るとミス
+  const w = makeWorld({ power: 1 });
+  w.level.fill(10, 24, 3, 3, TILE.LAVA);
+  const p = w.player;
+  p.xpos = 9 * 16;
+  let st = 0;
+  for (let f = 0; f < 120 && st !== 9; f++) { run(w, 1, () => [PAD.RIGHT]); st = p.state; }
+  assert.equal(st, 9, 'dies in lava');
+  assert.equal(p.yspeed, 0x90);
+  console.log('lava: ok');
+}
+{
+  // ステージデータの保存と読み込み
+  const { Level } = await import('../js/level.js');
+  const a = new Level();
+  a.theme = 'castle';
+  a.start = { tx: 7, ty: 20 };
+  const d = JSON.parse(JSON.stringify(a.toData()));
+  const b = new Level(d);
+  assert.equal(b.width, a.width);
+  assert.deepEqual([...b.tiles], [...a.tiles]);
+  assert.equal(b.theme, 'castle');
+  assert.deepEqual(b.spawns, a.spawns);
+  assert.deepEqual([...b.contents], [...a.contents]);
+  b.resize(40);
+  assert.equal(b.tileAt(39, 24), TILE.GROUND);
+  assert.equal(b.tileAt(40, 24), TILE.EMPTY);
+  const { World } = await import('../js/world.js');
+  const w = new World(d);
+  assert.equal(w.player.xpos, 7 * 16);
+  assert.equal(w.player.ypos + 0x20, 21 * 16, 'feet at the bottom of the start tile');
+  console.log('level data: ok');
+}
+{
+  // 縦スクロール：ツタを登ると画面が上へついてくる。空中（ジャンプ）では着地まで上へスクロールしない
+  const w = makeWorld({ power: 1 });
+  w.level.fill(10, 4, 1, 20, TILE.VINE);
+  w.level.fill(11, 4, 4, 1, TILE.STONE);
+  const p = w.player;
+  const cy0 = w.camera.y;
+  run(w, 40, () => [B]);
+  assert.equal(w.camera.y, cy0, 'no scroll while jumping');
+  run(w, 60, () => [0]);
+  p.xpos = 10 * 16 - 8 + 8;
+  run(w, 5, () => [U]);
+  assert.ok(p.climbing, 'climbing');
+  run(w, 200, () => [U]);
+  assert.ok(w.camera.y < cy0 - 100, `camera followed up ${w.camera.y}`);
+  const rel = p.ypos - w.camera.y;
+  assert.ok(rel >= 97 && rel <= 124, `player kept in band ${rel}`);
+  // 落ちると下へもどる
+  p.climbing = 0;
+  run(w, 200, () => [R]);
+  assert.equal(w.camera.y, cy0, 'camera back to the bottom');
+  console.log('vertical scroll: ok');
+}

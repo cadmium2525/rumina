@@ -1,15 +1,20 @@
 // ゲーム世界：レベル・プレイヤー・スプライト・エフェクトをまとめて 1 フレーム進める。
 // DOM に依存しない（描画は main.js / *_view.js）。
 import { Player } from './player.js';
-import { Level, Camera, GROUND_Y, SCREEN_W, LEVEL_H, TILE } from './level.js';
+import { Level, Camera, GROUND_Y, SCREEN_W, LEVEL_H, TILE, CAM_Y } from './level.js';
 import { GiftBox, Shell, Spiker, LightOrb } from './actors.js';
 import { BRICK_X, BRICK_Y, BRICK_XSPEED, BRICK_YSPEED } from './smw_tables.js';
 
 export class World {
-  constructor() {
-    this.level = new Level();
+  // levelData: エディタで作ったステージ（無ければ標準のテストステージ）
+  constructor(levelData = null) {
+    this.level = new Level(levelData);
     this.camera = new Camera();
-    this.player = new Player(0x40, GROUND_Y - 0x20);
+    const st = this.level.start;
+    this.player = new Player(st.tx * 16, (st.ty + 1) * 16 - 0x20);
+    // スタート位置が画面の右寄りなら、最初からそこが見えるようにする
+    this.camera.x = Math.max(0, Math.min(this.level.widthPx - SCREEN_W, this.player.xpos - 0x80));
+    this.camera.y = Math.max(0, Math.min(CAM_Y, this.player.ypos - 0x70));
     this.player.powerUp = 0; // SMW と同じく小さい状態で始まる
     this.actors = [];
     this.effects = [];
@@ -83,7 +88,7 @@ export class World {
     }
 
     // SMW と同じく、カメラ → プレイヤー → スプライトの順
-    this.camera.update(this.player);
+    this.camera.update(this.player, this.level.widthPx);
     env.camX = this.camera.x;
     this.player.update(pad, env);
     if (this.player.locked && this.player.carrying) this.onPlayerHurt();
@@ -93,7 +98,11 @@ export class World {
     this.waterEffects();
 
     this.updateSpawns();
-    for (const a of this.actors) a.update(this);
+    for (const a of this.actors) {
+      a.update(this);
+      // マグマに落ちたスプライトは消える
+      if (a.state !== 'carried' && this.level.tileAtPx(a.x + 8, a.y + 12) === TILE.LAVA) a.dead = true;
+    }
     this.actors = this.actors.filter((a) => !a.dead);
 
     this.updateEffects();
