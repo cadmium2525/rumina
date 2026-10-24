@@ -9,6 +9,7 @@ import {
   SLOPE_SNAP, SLOPE_FLAT, SLIDE_START,
   SWIM_POSES, SWIM_YSPEED, WATER_JUMP_OUT, CLIMB_SPEED, JUMP_FROM_VINE, CLIMB_POSE,
   GROW_IMAGES, GROW_TIME, DEATH_TIME, DEATH_YSPEED, DEATH_POSE,
+  END_LEVEL_TIME, END_WALK_UNTIL, END_WALK_XSPEED, VICTORY_TIME, VICTORY_POSE,
 } from './smw_tables.js';
 import { TILE, isSlope, slopeK, isCeilingSlope, isClimbable } from './level.js';
 
@@ -38,7 +39,7 @@ export const POSE = {
   CLIMB: 0x15, SWIM_A: 0x16, SWIM_A_CARRY: 0x17, SWIM: 0x18, SWIM_CARRY: 0x19,
   SWIM_B: 0x1a, SWIM_B_CARRY: 0x1b, SLIDE: 0x1c,
   PICKUP: 0x1d, CARRY_JUMP: 0x1e,
-  FALL: AIR_FALL, DUCK: 0x3c, MEDIUM: 0x3d, DEAD: DEATH_POSE, BACK: 0x44, FRONT: 0x45, BIG_STAND: 0x46,
+  WIN: VICTORY_POSE, FALL: AIR_FALL, DUCK: 0x3c, MEDIUM: 0x3d, DEAD: DEATH_POSE, BACK: 0x44, FRONT: 0x45, BIG_STAND: 0x46,
 };
 
 // プレイヤーの状態 ($71)
@@ -62,6 +63,10 @@ export class Player {
     this.state = STATE.NORMAL; // $71
     this.locked = 0;        // ゲームが止まっている（縮む・大きくなる・ミスの演出中, flag_sprites_locked）
     this.dead = 0;          // ミスの演出が終わった（ステージをやり直す）
+    this.endTimer = 0;      // ゴールした後のタイマー (timer_end_level)
+    this.victory = 0;       // 勝利ポーズ中 (flag_show_victory_pose_during_level_end)
+    this.victoryTimer = 0;  // timer_show_victory_pose
+    this.cleared = 0;       // 勝利ポーズが終わった（コースクリア）
     this.ducking = 0;
     this.pmeter = 0;
     this.turning = 0;
@@ -112,6 +117,12 @@ export class Player {
     if (this.state !== STATE.NORMAL) {
       this.powerAnim();
       return;
+    }
+    if (this.endTimer) {
+      // ゴールした後はボタンが効かない (PlayerState00_HandleEndOfLevel)
+      input = this.endOfLevel();
+      if (!input) return;
+      this.in = input;
     }
     // タイマー減算 (00C47E 内のループ。ゲームが止まっている間は減らない)
     if (this.animTimer) this.animTimer--;
@@ -188,6 +199,39 @@ export class Player {
         this.facing = (this.env.frame & 4) ? 1 : 0;
       }
     }
+  }
+
+  // ゴールした (Spr07B_GoalTape：timer_end_level = 0xFF)
+  goal() {
+    if (this.endTimer) return;
+    this.endTimer = END_LEVEL_TIME;
+    this.hurtTimer = 0;
+  }
+
+  // PlayerState00_HandleEndOfLevel → 00C96B。右へ少し歩いて止まり、勝利ポーズ。
+  // 戻り値はこのフレームの入力（null なら動かない）
+  endOfLevel() {
+    this.overrideWalk = 0;
+    this.sliding = 0;
+    // HandlePaletteFades：2 フレームに 1 減る（1 で止まる）
+    if ((this.env.frame & 1) && this.endTimer !== 1) this.endTimer--;
+    if (this.victory) {
+      this.pose = POSE.WIN;
+      if (this.victoryTimer && !--this.victoryTimer) this.cleared = 1;
+      return null;
+    }
+    let hold1 = 0;
+    if (this.endTimer >= END_WALK_UNTIL) {
+      this.facing = 1;
+      hold1 = PAD.RIGHT;
+      this.xspeed = END_WALK_XSPEED;
+    }
+    if (this.inAir) this.friction();
+    if (!this.xspeed) {
+      this.victory = 1;
+      this.victoryTimer = VICTORY_TIME;
+    }
+    return { hold1, press1: 0, hold2: 0, press2: 0 };
   }
 
   // ゲームを止めて演出を始める (DamagePlayer_SetHurtAnimationTimer)
@@ -803,7 +847,7 @@ export class Player {
   // ダメージ (DamagePlayer_Hurt, 00F5B7)。受けたら true（無敵中・演出中は false）。
   // SMW にノックバックは無い。大きければ縮み（ゲームが止まり、終わると無敵になって点滅）、小さければミス。
   hurt() {
-    if (this.state !== STATE.NORMAL || this.hurtTimer) return false;
+    if (this.state !== STATE.NORMAL || this.hurtTimer || this.endTimer) return false;
     if (this.powerUp) {
       this.powerUp = 0;
       this.startState(STATE.POWER_DOWN, GROW_TIME);

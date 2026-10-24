@@ -60,7 +60,10 @@ const PALETTE = [
     { kind: 'spawn', type: 'shell', name: '甲羅' },
     { kind: 'spawn', type: 'spiker', name: 'トゲムシ' },
   ]],
-  ['その他', [{ kind: 'start', name: 'スタート位置' }, { kind: 'erase', name: '消しゴム' }]],
+  ['その他', [
+    { kind: 'start', name: 'スタート位置' }, { kind: 'goal', name: 'ゴール（もう一度置くと移動）' },
+    { kind: 'erase', name: '消しゴム' },
+  ]],
 ];
 const ALL = PALETTE.flatMap(([, items]) => items);
 
@@ -145,7 +148,13 @@ function apply(tx, ty, b = brush) {
     level.spawns.push({ type: b.type, x: tx * 16, y: ty * 16 });
   } else if (b.kind === 'start') {
     level.start = { tx, ty };
+  } else if (b.kind === 'goal') {
+    level.goal = { tx, ty };
   } else if (b.kind === 'erase') {
+    if (level.goal && level.goal.tx === tx && level.goal.ty === ty) {
+      level.goal = null;
+      return;
+    }
     const i = spawnAt(tx, ty);
     if (i >= 0) level.spawns.splice(i, 1);
     else {
@@ -160,6 +169,7 @@ function pick(tx, ty) {
   let b = null;
   if (i >= 0) b = ALL.find((p) => p.kind === 'spawn' && p.type === level.spawns[i].type);
   else if (level.start.tx === tx && level.start.ty === ty) b = ALL.find((p) => p.kind === 'start');
+  else if (level.goal && level.goal.tx === tx && level.goal.ty === ty) b = ALL.find((p) => p.kind === 'goal');
   else {
     const t = level.tileAt(tx, ty);
     if (t === T.EMPTY) b = ALL.find((p) => p.kind === 'erase');
@@ -228,6 +238,14 @@ function render() {
   }
   const st = level.start;
   rumina.draw(g, 0, 1, st.tx * 16 - sx, (st.ty + 1) * 16 - 32, 0);
+  if (level.goal) {
+    const gl = { x: level.goal.tx * 16, bottom: (level.goal.ty + 1) * 16, y: (level.goal.ty + 1) * 16 - 24 };
+    actors.drawGoalBack(g, gl, frame, sx, 0);
+    actors.drawGoalFront(g, gl, frame, sx, 0);
+    // 置いた場所（足元のマス）
+    g.strokeStyle = 'rgba(255,224,112,0.8)';
+    g.strokeRect(gl.x - sx + 0.5, level.goal.ty * 16 + 0.5, 15, 15);
+  }
   view.drawWater(g, level, sx, 0, frame, viewW, LEVEL_PX_H);
 
   // ステージの外
@@ -413,6 +431,17 @@ function iconFor(p) {
     t.height = 32;
     rumina.draw(t.getContext('2d'), 0, 1, 4, 0, 0);
     ig.drawImage(t, 1, 11, 22, 21, 0, 1, 16, 15);
+  } else if (p.kind === 'goal') {
+    ig.fillStyle = '#24141c';
+    ig.fillRect(2, 2, 4, 14);
+    ig.fillRect(10, 2, 4, 14);
+    ig.fillStyle = '#f6d480';
+    ig.fillRect(3, 3, 2, 13);
+    ig.fillRect(11, 3, 2, 13);
+    ig.fillStyle = '#fff8e0';
+    ig.fillRect(4, 8, 8, 2);
+    ig.drawImage(orb, 0, 0, 8, 8);
+    ig.drawImage(orb, 8, 0, 8, 8);
   } else if (p.kind === 'erase') {
     ig.strokeStyle = '#ff6060';
     ig.lineWidth = 2;

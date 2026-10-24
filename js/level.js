@@ -70,6 +70,7 @@ export class Level {
     this.contents = new Map(); // ？ブロックの中身 'tx,ty' → 'light'（光の玉）
     this.theme = 'grass';
     this.start = { tx: 4, ty: GROUND_Y / 16 - 1 }; // スタート位置（足元のタイル）
+    this.goal = null; // ゴール {tx, ty}（ゲートの足元のタイル）
     if (data) {
       this.load(data);
     } else {
@@ -95,6 +96,7 @@ export class Level {
     this.spawns = this.spawns.filter((s) => s.x < width * 16);
     for (const k of [...this.contents.keys()]) if (+k.split(',')[0] >= width) this.contents.delete(k);
     if (this.start.tx >= width) this.start.tx = width - 1;
+    if (this.goal && this.goal.tx >= width) this.goal = null;
   }
 
   // 保存用の形式：タイルは行ごとに並べて [値, 個数] の連長圧縮
@@ -111,6 +113,7 @@ export class Level {
       format: 'rumina-level', version: 1,
       width: this.width, height: TILES_H, theme: this.theme,
       start: { ...this.start },
+      goal: this.goal ? { ...this.goal } : null,
       tiles: rle,
       spawns: this.spawns.map((s) => ({ type: s.type, tx: Math.floor(s.x / 16), ty: Math.floor(s.y / 16) })),
       items: [...this.contents].map(([k, item]) => {
@@ -132,6 +135,7 @@ export class Level {
     }
     this.theme = THEMES.includes(d.theme) ? d.theme : 'grass';
     if (d.start) this.start = { tx: d.start.tx | 0, ty: d.start.ty | 0 };
+    this.goal = d.goal ? { tx: d.goal.tx | 0, ty: d.goal.ty | 0 } : null;
     this.spawns = (d.spawns ?? []).filter((s) => ['gift', 'shell', 'spiker'].includes(s.type))
       .map((s) => ({ type: s.type, x: s.tx * 16, y: s.ty * 16 }));
     this.contents = new Map((d.items ?? []).map((e) => [`${e.tx},${e.ty}`, e.item]));
@@ -163,6 +167,8 @@ export class Level {
     this.fill(70, 22, 3, 2, TILE.TURN);
 
     this.buildTerrainTest(groundRow);
+    // ゴール（落とし穴の先）
+    this.goal = { tx: 200, ty: groundRow - 1 };
     // スタート近くの ？ブロック（光の玉）
     this.question(8, 20, 'light');
     this.question(55, 20, 'light');

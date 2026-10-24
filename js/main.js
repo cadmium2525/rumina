@@ -33,12 +33,14 @@ function customLevel() {
 const levelData = customLevel();
 let world = new World(levelData);
 let paused = false;
+let clearTimer = 0;
+const CLEAR_TIME = 240;
 let showDebug = false;
 
 // ゲーム内イベント → 効果音と触覚フィードバック
 const HAPTIC_OF = {
   break: 'medium', shatter: 'medium', bounce: 'medium', shrink: 'heavy', die: 'heavy', grow: 'medium',
-  bump: 'light', grab: 'light', throw: 'light', kick: 'light', splash: 'light',
+  goal: 'heavy', tape: 'medium', bump: 'light', grab: 'light', throw: 'light', kick: 'light', splash: 'light',
 };
 
 function step() {
@@ -56,6 +58,8 @@ function step() {
   world.events.length = 0;
   // ミスの演出が終わったらやり直し
   if (world.player.dead) reset();
+  // コースクリア：文字を出してしばらくしたらやり直し
+  if (world.cleared && ++clearTimer > CLEAR_TIME) reset();
 }
 
 function drawPMeter() {
@@ -77,6 +81,24 @@ function drawPMeter() {
   P.forEach((row, y) => [...row].forEach((c, x) => c === '1' && g.fillRect(61 + x, 8 + y, 1, 1)));
 }
 
+// 「コースクリア！」
+function drawClear() {
+  const t = Math.min(clearTimer, 30) / 30;
+  g.save();
+  g.globalAlpha = 0.35 * t;
+  g.fillStyle = '#fff8d0';
+  g.fillRect(0, 0, SCREEN_W, SCREEN_H);
+  g.globalAlpha = t;
+  g.font = 'bold 20px system-ui, sans-serif';
+  g.textAlign = 'center';
+  g.lineWidth = 4;
+  g.strokeStyle = '#24141c';
+  g.strokeText('コースクリア！', SCREEN_W / 2, 80);
+  g.fillStyle = '#ffe070';
+  g.fillText('コースクリア！', SCREEN_W / 2, 80);
+  g.restore();
+}
+
 function render() {
   const camX = Math.floor(world.camera.x);
   const camY = world.camera.y;
@@ -94,6 +116,10 @@ function render() {
   for (const a of world.actors) {
     if (a.state === 'carried') continue; // 手前に描く
     if (a.type === 'light' && a.emerge) continue;
+    if (a.type === 'goal') {
+      actorSprites.drawGoalBack(g, a, world.frame, camX, camY);
+      continue;
+    }
     actorSprites.drawActor(g, a, world.frame, a.x - camX, a.y - camY);
   }
   // ダメージ後の無敵中は点滅
@@ -103,6 +129,7 @@ function render() {
   for (const a of world.actors) {
     if (a.state === 'carried') actorSprites.drawActor(g, a, world.frame, a.x - camX, a.y - camY);
   }
+  if (world.goal) actorSprites.drawGoalFront(g, world.goal, world.frame, camX, camY);
   for (const e of world.effects) {
     if (e.kind === 'piece') actorSprites.drawPiece(g, e, world.frame, e.x - camX, e.y - camY);
     else if (e.kind === 'star') actorSprites.drawStar(g, e, e.x - camX, e.y - camY);
@@ -112,6 +139,7 @@ function render() {
   view.drawWater(g, world.level, camX, camY, world.frame);
 
   drawPMeter();
+  if (clearTimer) drawClear();
   if (paused) {
     g.fillStyle = 'rgba(0,0,0,0.45)';
     g.fillRect(0, 0, SCREEN_W, SCREEN_H);
@@ -190,6 +218,7 @@ function toggleDebug() {
 }
 function reset() {
   world = new World(levelData);
+  clearTimer = 0;
   paused = false;
 }
 

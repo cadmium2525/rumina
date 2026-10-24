@@ -199,3 +199,13 @@ export const GROW_TIME = 0x2f;   // 47 フレーム（その間ゲームが止�
 export const DEATH_TIME = 0x30;  // ミスの演出 (DamagePlayer_PitFall)。4 フレームに 1 減る
 export const DEATH_YSPEED = 0x90; // やられた時に跳ねる速さ (DamagePlayer_Kill: -112)
 export const DEATH_POSE = 0x3e;
+
+// ---- ゴール ----
+// ゴールテープの縦の速さ (kSpr07B_GoalTape_YSpeed)。124 フレームごとに上下が入れ替わる
+export const GOAL_TAPE_YSPEED = [12, -12];
+export const GOAL_TAPE_TIME = 124;
+export const END_LEVEL_TIME = 0xff;   // timer_end_level
+export const END_WALK_UNTIL = 0x28;   // これ以上の間は右へ歩かされる (00C96B)
+export const END_WALK_XSPEED = 5;
+export const VICTORY_TIME = 64;       // 勝利ポーズ (timer_show_victory_pose)
+export const VICTORY_POSE = 0x26;     // PlayerState00_SetMarioPeaceImg

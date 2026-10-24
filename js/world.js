@@ -2,7 +2,7 @@
 // DOM に依存しない（描画は main.js / *_view.js）。
 import { Player } from './player.js';
 import { Level, Camera, GROUND_Y, SCREEN_W, LEVEL_H, TILE, CAM_Y } from './level.js';
-import { GiftBox, Shell, Spiker, LightOrb } from './actors.js';
+import { GiftBox, Shell, Spiker, LightOrb, Goal } from './actors.js';
 import { BRICK_X, BRICK_Y, BRICK_XSPEED, BRICK_YSPEED } from './smw_tables.js';
 
 export class World {
@@ -21,6 +21,9 @@ export class World {
     this.events = [];
     this.frame = 0;
     this.points = this.level.spawns.map((s) => ({ ...s, state: 'idle', actor: null }));
+    this.goal = this.level.goal ? new Goal(this.level.goal.tx, this.level.goal.ty) : null;
+    if (this.goal) this.actors.push(this.goal);
+    this.cleared = false;
     this.env = {
       level: this.level,
       camX: 0,
@@ -65,6 +68,19 @@ export class World {
   // 接触エフェクト（SpawnContactEffectFromAbove）
   star(x, y) { this.effects.push({ kind: 'star', x, y, t: 8 }); }
 
+  // ゴールした：画面の敵や持っている物は星になって消える（SMW ではコインになる）
+  reachGoal() {
+    this.player.goal();
+    for (const a of this.actors) {
+      if (a.type === 'goal') continue;
+      this.star(a.x, a.y);
+      a.dead = true;
+    }
+    this.player.carrying = null;
+    for (const p of this.points) p.state = 'used';
+    this.emit('goal');
+  }
+
   // ダメージを受けた（縮む・ミス）。持っている物は落とす（SMW: 状態が 0 でなくなると status 9 になる）
   onPlayerHurt() {
     const p = this.player;
@@ -101,16 +117,18 @@ export class World {
     for (const a of this.actors) {
       a.update(this);
       // マグマに落ちたスプライトは消える
-      if (a.state !== 'carried' && this.level.tileAtPx(a.x + 8, a.y + 12) === TILE.LAVA) a.dead = true;
+      if (a.type !== 'goal' && a.state !== 'carried' && this.level.tileAtPx(a.x + 8, a.y + 12) === TILE.LAVA) a.dead = true;
     }
     this.actors = this.actors.filter((a) => !a.dead);
 
     this.updateEffects();
     this.level.update();
+    if (this.player.cleared) this.cleared = true;
   }
 
   // 画面の端に近づいたらスプライトを出す。遠ざかるまでは再出現しない
   updateSpawns() {
+    if (this.player.endTimer) return; // ゴールした後は出ない
     const cx = this.camera.x;
     for (const p of this.points) {
       const near = p.x > cx - 32 && p.x < cx + SCREEN_W + 32;

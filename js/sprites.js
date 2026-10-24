@@ -63,7 +63,7 @@ const POSE_FRAME = {
   [POSE.FACE]: 'front', [POSE.FRONT]: 'front', [POSE.BACK]: 'back',
   [POSE.CARRY0]: 'carry', [POSE.CARRY1]: 'carry_walk1', [POSE.CARRY2]: 'carry_walk2',
   [POSE.CARRY_UP]: 'carry', [POSE.PICKUP]: 'duck_carry', [POSE.CARRY_JUMP]: 'carry_jump',
-  [POSE.KICK]: 'kick',
+  [POSE.KICK]: 'kick', [POSE.WIN]: 'win',
   [POSE.CLIMB]: 'climb', [POSE.SLIDE]: 'slide',
   // 泳ぎ：水をかく 2 コマと、浮いているコマ（持っている時は持ったまま）
   [POSE.SWIM_A]: 'swim_a', [POSE.SWIM_B]: 'swim_b', [POSE.SWIM]: 'swim',
@@ -84,7 +84,7 @@ const SMALL_FRAME = {
   [POSE.CLIMB]: 'c_climb', [POSE.SLIDE]: 'c_slide',
   [POSE.SWIM_A]: 'c_swim_a', [POSE.SWIM_B]: 'c_swim_b', [POSE.SWIM]: 'c_swim',
   [POSE.SWIM_A_CARRY]: 'c_swim_a_carry', [POSE.SWIM_B_CARRY]: 'c_swim_b_carry', [POSE.SWIM_CARRY]: 'c_carry_jump',
-  [POSE.DEAD]: 'c_dead',
+  [POSE.DEAD]: 'c_dead', [POSE.WIN]: 'c_win',
 };
 
 // 大きさが変わる途中の中くらいの絵（大きい立ちポーズを縦に縮める）
@@ -160,6 +160,49 @@ export class ActorSprites {
     this.shellSpin = [side, front, edge, front];
   }
 
+  // ゴールの柱 1 本（8x144）。上に光の玉
+  drawPost(g, x, bottom, frame) {
+    const top = bottom - 144;
+    g.fillStyle = '#24141c';
+    g.fillRect(x, top + 8, 8, 136);
+    for (let y = top + 9; y < bottom; y++) {
+      const band = ((y - top) >> 3) & 1;
+      g.fillStyle = band ? '#fff4c4' : '#f6d480';
+      g.fillRect(x + 1, y, 6, 1);
+      g.fillStyle = band ? '#f6d480' : '#d6a050';
+      g.fillRect(x + 6, y, 1, 1);
+    }
+    // 光の玉（ゆっくり明滅）
+    g.save();
+    g.globalAlpha = 0.3 + 0.15 * Math.sin(frame / 10);
+    g.fillStyle = '#fff6b0';
+    g.beginPath();
+    g.arc(x + 4, top + 4, 8, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    g.drawImage(this.light, x - 4, top - 4);
+  }
+
+  // ゴールの奥の柱とテープ。x はテープの位置（Goal.x）
+  drawGoalBack(g, goal, frame, camX, camY) {
+    const x = goal.x - camX;
+    this.drawPost(g, x - 20, goal.bottom - camY, frame);
+    if (goal.done && !goal.cut) return; // 通った後のテープは消える
+    const ty = Math.round(goal.y) - camY;
+    const tx = x - 12;
+    g.fillStyle = '#24141c';
+    g.fillRect(tx, ty - 1, 32, 6);
+    g.fillStyle = '#fff8e0';
+    g.fillRect(tx + 1, ty, 30, 2);
+    g.fillStyle = '#ffd860';
+    g.fillRect(tx + 1, ty + 2, 30, 2);
+  }
+
+  // ゴールの手前の柱（ルミナより手前に描く）
+  drawGoalFront(g, goal, frame, camX, camY) {
+    this.drawPost(g, goal.x - camX + 20, goal.bottom - camY, frame);
+  }
+
   drawActor(g, a, frame, x, y) {
     if (a.type === 'light') {
       // 出てくる最初の 8 フレームは描かない (1540 < 0x36)
@@ -184,13 +227,19 @@ export class ActorSprites {
       }
       return;
     }
-    if (a.type === 'gift') {
-      g.drawImage(this.gift, x, y);
-      return;
-    }
-    if (a.type === 'shell') {
-      const img = a.state === 'kicked' ? this.shellSpin[(frame >> 2) & 3] : this.shell;
-      g.drawImage(img, x, y);
+    if (a.type === 'gift' || a.type === 'shell') {
+      let img = this.gift;
+      if (a.type === 'shell') img = a.state === 'kicked' ? this.shellSpin[(frame >> 2) & 3] : this.shell;
+      if (a.state === 'dying') {
+        // やられた：上下逆さま
+        g.save();
+        g.translate(x, y + 16);
+        g.scale(1, -1);
+        g.drawImage(img, 0, 0);
+        g.restore();
+      } else {
+        g.drawImage(img, x, y);
+      }
       return;
     }
     const img = this.spiker[(frame >> 3) & 1][a.facing ? 'right' : 'left'];

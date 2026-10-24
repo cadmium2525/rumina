@@ -453,3 +453,28 @@ console.log('world: ok');
   assert.equal(e2.facing, 1, 'enemy turned away');
   console.log('placed shell: ok');
 }
+{
+  // 持っている甲羅が敵に触れると、敵も甲羅もやられる (sub_1A685)
+  for (const Make of [Shell, GiftBox]) {
+    const w = makeWorld();
+    const sh = new Make(80, GROUND_Y - 16);
+    w.actors.push(sh);
+    const p = w.player;
+    p.xpos = 60;
+    run(w, 30, () => [PAD.Y | PAD.RIGHT]);
+    assert.equal(p.carrying, sh, 'carrying');
+    const e = new Spiker(p.xpos + 40, GROUND_Y - 16);
+    e.facing = 0;
+    w.actors.push(e);
+    let hit = false;
+    for (let f = 0; f < 60 && !hit; f++) { run(w, 1, () => [PAD.Y]); hit = sh.state === 'dying'; }
+    assert.ok(hit, 'carried item destroyed');
+    assert.ok(e.dying, 'enemy destroyed');
+    assert.equal(p.carrying, null, 'hands empty');
+    assert.equal(p.hurtTimer, 0, 'not hurt');
+    assert.equal(p.powerUp, 1);
+    run(w, 120, () => [0]);
+    assert.ok(sh.dead && !w.actors.includes(sh), 'fell off screen');
+  }
+  console.log('carried clash: ok');
+}

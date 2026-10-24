@@ -4,7 +4,7 @@ import { LEVEL_H, SCREEN_W, TILE, isSlope, slopeK, isCeilingSlope } from './leve
 import { PAD } from './player.js';
 import {
   SHELL_X_SPEED, PLACED_X_OFFSET, PLACED_X_SPEED, CARRIED_X_OFFSET,
-  SPR_GRAVITY, SPR_MAX_FALL, STUN_BOUNCE, SLOPE_SHAPE,
+  SPR_GRAVITY, SPR_MAX_FALL, STUN_BOUNCE, SLOPE_SHAPE, GOAL_TAPE_YSPEED, GOAL_TAPE_TIME,
 } from './smw_tables.js';
 
 const u8 = (v) => v & 0xff;
@@ -151,6 +151,7 @@ class Throwable extends Sprite {
   update(w) {
     if (this.contactTimer) this.contactTimer--;
     if (this.state === 'carried') this.updateCarried(w);
+    else if (this.state === 'dying') this.updateDying(w);
     else if (this.state === 'kicked') this.updateKicked(w);
     else this.updateIdle(w);
     if (!this.dead && this.state !== 'carried' && this.offscreen(w, 192)) this.dead = true;
@@ -255,6 +256,9 @@ class Throwable extends Sprite {
     const p = w.player;
     if ((p.in.hold1 & PAD.Y)) {
       this.followPlayer(p);
+      // 持っている物が敵に触れると、敵も持っている物もやられる (01A4BA → sub_1A685)
+      const e = w.actors.find((a) => a.type === 'spiker' && !a.dead && !a.dying && overlap(this.hitbox, a.hitbox));
+      if (e) this.clash(w, e);
       return;
     }
     // Y を離した：投げる / ↓で置く / ↑で真上に投げる (019FDC〜)
@@ -299,6 +303,29 @@ class Throwable extends Sprite {
     this.ys = 0;
     this.subX = 0;
     this.subY = 0;
+  }
+
+  // sub_1A685：敵と相打ち。どちらも上へ跳ねて画面の下へ落ちていく
+  clash(w, e) {
+    const p = w.player;
+    const exs = e.xs < 0 ? 16 : -16; // 敵は進んでいた向きと逆へ飛ぶ
+    e.kill(1);
+    e.ys = -48;
+    e.xs = exs;
+    this.state = 'dying';
+    this.ys = -48;
+    this.xs = -e.xs;
+    if (p.carrying === this) p.carrying = null;
+    w.star(e.x, e.y);
+    w.emit('kick');
+  }
+
+  // SprStatus02：やられて落ちていく（地形には当たらない）
+  updateDying(w) {
+    this.moveY();
+    this.ys = Math.min(this.ys + SPR_GRAVITY, SPR_MAX_FALL);
+    this.moveX();
+    if (this.y > LEVEL_H + 32) this.dead = true;
   }
 
   // ダメージを受けて落とした
@@ -485,4 +512,55 @@ export class LightOrb extends Sprite {
     }
     if (this.offscreen(w, 64)) this.dead = true;
   }
+}
+
+// ゴール（SMW のゴールテープ, sprite 0x7B）。2 本の柱の間をテープが上下する。
+// 柱の間を通るとゴール。テープに触れると、テープが切れて飛んでいく（ボーナス）
+export const GOAL_POST_H = 144;
+export class Goal extends Sprite {
+  // tx, ty：ゲートの足元のタイル
+  constructor(tx, ty) {
+    super(tx * 16, (ty + 1) * 16);
+    this.type = 'goal';
+    this.bottom = (ty + 1) * 16;      // 地面の高さ
+    this.base = this.bottom - 24;     // テープの一番下 ($1528)
+    this.y = this.base;               // テープの高さ
+    this.timer = 0;                   // $1540
+    this.dir = 0;                     // $1588
+    this.done = false;                // $1602：通った
+    this.cut = false;                 // $160E：テープに触れた
+  }
+
+  update(w) {
+    if (this.cut) {
+      // 切れたテープは飛んでいく
+      this.moveX();
+      this.moveY();
+      this.ys = Math.min(this.ys + 1, 0x20);
+      return;
+    }
+    if (this.done) return;
+    // Spr07B_GoalTape (01C098)
+    if (!this.timer) {
+      this.timer = GOAL_TAPE_TIME;
+      this.dir++;
+    }
+    this.timer--;
+    this.ys = GOAL_TAPE_YSPEED[this.dir & 1];
+    this.moveY();
+    const p = w.player;
+    if (((p.xpos - (this.x - 8)) & 0xffff) < 0x10 && p.ypos <= this.base) {
+      this.done = true;
+      if (touchesPlayer(p, this.hitbox)) {
+        this.cut = true;
+        this.x0 = this.x;
+        this.xs = 16;
+        this.ys = -16;
+        w.emit('tape');
+      }
+      w.reachGoal();
+    }
+  }
+
+  get hitbox() { return { x: this.x - 8, y: this.y, w: 16, h: 4 }; }
 }

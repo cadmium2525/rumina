@@ -67,6 +67,12 @@ export const sfx = {
   grow() {
     [300, 400, 520, 660, 800].forEach((f, i) => setTimeout(() => tone('square', f, f * 1.1, 0.08, 0.07), i * 80));
   },
+  // ゴール：明るいファンファーレ
+  goal() {
+    const notes = [523, 659, 784, 1047, 784, 1047, 1319];
+    notes.forEach((f, i) => setTimeout(() => tone('square', f, f, i === notes.length - 1 ? 0.5 : 0.12, 0.07), i * 120));
+  },
+  tape() { tone('triangle', 900, 1800, 0.25, 0.09); },
   powerup() { tone('square', 600, 1200, 0.15, 0.07); },
   sprout() { tone('triangle', 200, 600, 0.3, 0.08); },
   die() {
