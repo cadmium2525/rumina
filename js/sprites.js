@@ -4,7 +4,7 @@ import { POSE } from './player.js';
 import {
   PAL_OBJ, GIFT, SPIKER_A, SPIKER_B, PIECE_GOLD, PIECE_GIFT, STAR_A, STAR_B,
   SHELL_SIDE, SHELL_FRONT, SHELL_EDGE, LIGHT_ORB,
-  PAL_AKIBA, CAPSULE, ROBO_A, ROBO_B, DRONE_A, DRONE_B, SPARK_A, SPARK_B,
+  PAL_AKIBA, CAPSULE, ROBO_A, ROBO_B, DRONE_A, DRONE_B, SPARK_A, SPARK_B, SHELLBULLET,
 } from './art.js';
 
 export const PALETTE = {
@@ -150,6 +150,7 @@ export class ActorSprites {
     // 電気街の敵（右向きと左向き）
     const both = (grid) => ({ right: gridToCanvas(grid, PAL_AKIBA, false), left: gridToCanvas(grid, PAL_AKIBA, true) });
     this.capsule = both(CAPSULE);
+    this.bullet = both(SHELLBULLET);
     this.robo = [both(ROBO_A), both(ROBO_B)];
     this.drone = [both(DRONE_A), both(DRONE_B)];
     this.spark = [both(SPARK_A), both(SPARK_B)];
@@ -284,6 +285,8 @@ export class ActorSprites {
   akibaImage(a, frame) {
     const dir = (set) => (a.facing ? set.right : set.left);
     if (a.type === 'capsule') return [this.capsule.right, 0];
+    // 砲弾の絵は左向き（右へ飛ぶ時は反転）
+    if (a.type === 'bullet') return [a.facing ? this.bullet.left : this.bullet.right, 0];
     if (a.type === 'robo') return [dir(this.robo[!a.dying && a.onFloor && a.timer < 10 ? 1 : 0]), -8];
     if (a.type === 'drone') return [dir(this.drone[(frame >> 1) & 1]), 0];
     if (a.type === 'spark') return [this.spark[(frame >> 2) & 1].right, 0];

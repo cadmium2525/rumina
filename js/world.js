@@ -2,7 +2,8 @@
 // DOM に依存しない（描画は main.js / *_view.js）。
 import { Player } from './player.js';
 import { Level, Camera, GROUND_Y, SCREEN_W, LEVEL_H, TILE, CAM_Y } from './level.js';
-import { GiftBox, Shell, Spiker, LightOrb, Goal, Capsule, Robo, Drone, Spark } from './actors.js';
+import { GiftBox, Shell, Spiker, LightOrb, Goal, Capsule, Robo, Drone, Spark, Bullet } from './actors.js';
+import { SHOOTER_TIME, SHOOTER_NEAR } from './smw_tables.js';
 import { BRICK_X, BRICK_Y, BRICK_XSPEED, BRICK_YSPEED } from './smw_tables.js';
 
 const INTRO_TIME = 100;
@@ -23,6 +24,13 @@ export class World {
     this.events = [];
     this.frame = 0;
     this.points = this.level.spawns.map((s) => ({ ...s, state: 'idle', actor: null }));
+    // 砲台：砲台のタイル 1 つが 1 つの発射台 (shooter sprite)
+    this.shooters = [];
+    for (let ty = 0; ty < this.level.tiles.length / this.level.width; ty++) {
+      for (let tx = 0; tx < this.level.width; tx++) {
+        if (this.level.tileAt(tx, ty) === TILE.CANNON) this.shooters.push({ x: tx * 16, y: ty * 16, timer: 0 });
+      }
+    }
     this.goal = this.level.goal ? new Goal(this.level.goal.tx, this.level.goal.ty) : null;
     if (this.goal) this.actors.push(this.goal);
     this.cleared = false;
@@ -142,6 +150,7 @@ export class World {
     this.waterEffects();
 
     this.updateSpawns();
+    this.updateShooters();
     for (const a of this.actors) {
       a.update(this);
       // マグマに落ちたスプライトは消える
@@ -152,6 +161,29 @@ export class World {
     this.updateEffects();
     this.level.update();
     if (this.player.cleared) this.cleared = true;
+  }
+
+  // ProcessShooterSprites (02B387) → ShooterSpr01_BulletBillShooter (02B466)。
+  // タイマーは 2 フレームに 1 減り、0 になったら 96 に戻して、条件が合えば撃つ：
+  // 砲台が画面の中（右端 16px は除く）にあり、ルミナが横に 17px 以上離れている
+  updateShooters() {
+    if (this.player.endTimer) return;
+    const cx = this.camera.x;
+    const cy = this.camera.y;
+    for (const s of this.shooters) {
+      if (s.timer && (this.frame & 1)) s.timer--;
+      if (s.timer) continue;
+      s.timer = SHOOTER_TIME;
+      const sx = s.x - cx;
+      const sy = s.y - cy;
+      if (sx < 0 || sx >= 0xf0 || sy < 0 || sy >= 224) continue;
+      const dx = this.player.xpos - s.x;
+      if (Math.abs(dx) < SHOOTER_NEAR) continue;
+      // 撃った時にルミナのいる側へ飛ぶ (Spr01C_BulletBill_Init)
+      this.actors.push(new Bullet(s.x, s.y - 1, dx > 0 ? 1 : -1));
+      this.effects.push({ kind: 'smoke', x: s.x + (dx > 0 ? 12 : -12), y: s.y - 4, t: 19 });
+      this.emit('cannon');
+    }
   }
 
   // 画面の端に近づいたらスプライトを出す。遠ざかるまでは再出現しない

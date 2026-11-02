@@ -5,6 +5,7 @@ import { PAD } from './player.js';
 import {
   SHELL_X_SPEED, PLACED_X_OFFSET, PLACED_X_SPEED, CARRIED_X_OFFSET,
   SPR_GRAVITY, SPR_MAX_FALL, STUN_BOUNCE, SLOPE_SHAPE, GOAL_TAPE_YSPEED, GOAL_TAPE_TIME,
+  BULLET_XSPEED, BULLET_EMERGE,
 } from './smw_tables.js';
 
 const u8 = (v) => v & 0xff;
@@ -619,34 +620,59 @@ class Enemy extends Sprite {
   stomped(w) { this.kill(w.player.xpos < this.x ? 1 : -1); }
 }
 
-// ガチャカプセル：ルミナが近づくと、積まれた順に右へまっすぐ飛ぶ。上から踏める（踏み台にもなる）
+// ガチャカプセル：地面をころころ転がる。壁で向きを変え、段差からは落ちる。上から踏める
 export class Capsule extends Enemy {
   constructor(x, y) {
     super(x, y);
     this.type = 'capsule';
-    this.flying = false;
-    // 積まれている高さで飛び出す順番をずらす（下から順）
-    this.delay = (26 - Math.floor(y / 16)) * 10;
+    this.facing = 0;
   }
 
-  get hitbox() { return { x: this.x + 1, y: this.y + 2, w: 14, h: 12 }; }
+  get hitbox() { return { x: this.x + 1, y: this.y + 2, w: 14, h: 14 }; }
 
   update(w) {
     if (this.contactTimer) this.contactTimer--;
     if (this.dying) return updateDying(this);
-    if (!this.flying) {
-      if (Math.abs(w.player.xpos - this.x) < 112) {
-        if (this.delay-- <= 0) {
-          this.flying = true;
-          this.xs = 0x10;
-          w.emit('kick');
-        }
-      }
-    } else {
-      this.moveX();
-    }
+    this.xs = this.facing ? 6 : -6;
+    this.moveY();
+    this.gravity();
+    this.moveX();
+    const f = this.collide(w.level);
+    if (f.floor) this.ys = 0;
+    if (f.ceiling) this.ys = 0;
+    if (f.wall) this.facing ^= 1;
     this.touch(w);
-    if (this.offscreen(w, this.flying ? 48 : 192)) this.dead = true;
+    if (this.offscreen(w, 192)) this.dead = true;
+  }
+}
+
+// 砲弾 (Spr01C_BulletBill)：砲台から撃たれ、ルミナのいた側へ 2px/フレームでまっすぐ飛ぶ。
+// 地形はすり抜ける。上から踏める（踏むと落ちる）
+export class Bullet extends Enemy {
+  constructor(x, y, dir) {
+    super(x, y);
+    this.type = 'bullet';
+    this.facing = dir > 0 ? 1 : 0;
+    this.xs = dir > 0 ? BULLET_XSPEED : -BULLET_XSPEED;
+    this.emerge = BULLET_EMERGE; // 出てすぐは砲台の後ろに描く ($1540)
+  }
+
+  get hitbox() { return { x: this.x + 1, y: this.y + 3, w: 14, h: 10 }; }
+
+  update(w) {
+    if (this.contactTimer) this.contactTimer--;
+    if (this.emerge) this.emerge--;
+    if (this.dying) return updateDying(this);
+    this.moveX();
+    this.touch(w);
+    if (this.offscreen(w, 32)) this.dead = true;
+  }
+
+  stomped(w) {
+    // 踏まれると真下へ落ちる
+    this.dying = true;
+    this.xs = 0;
+    this.ys = 0;
   }
 }
 

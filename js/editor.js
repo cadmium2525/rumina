@@ -60,6 +60,7 @@ const PALETTE = [
     tile(T.DUCT_TL, 'ダクトの口（左）'), tile(T.DUCT_TR, 'ダクトの口（右）'),
     tile(T.DUCT_L, 'ダクト（左）'), tile(T.DUCT_R, 'ダクト（右）'),
     tile(T.MESSAGE, 'メッセージブロック（置くと文を入力）'), tile(T.NEON, 'ネオン看板（飾り）'),
+    tile(T.CANNON, '砲台（約 3 秒ごとにルミナのいる側へ砲弾を撃つ）'),
   ]],
   ['仕掛け', [
     tile(T.SPIKE, 'トゲ（触れるとダメージ）'), tile(T.SPIKE_DOWN, '下向きのトゲ（触れるとダメージ）'),
@@ -69,7 +70,7 @@ const PALETTE = [
     { kind: 'spawn', type: 'gift', name: 'ギフトボックス' },
     { kind: 'spawn', type: 'shell', name: '甲羅' },
     { kind: 'spawn', type: 'spiker', name: 'トゲムシ' },
-    { kind: 'spawn', type: 'capsule', name: 'ガチャカプセル（近づくと右へ飛ぶ・踏める）' },
+    { kind: 'spawn', type: 'capsule', name: 'ガチャカプセル（転がる・踏める）' },
     { kind: 'spawn', type: 'robo', name: '警備ロボ（跳ねる・3 回踏むと倒れる）' },
     { kind: 'spawn', type: 'drone', name: 'ドローン（左右にふわふわ・踏める）' },
     { kind: 'spawn', type: 'spark', name: '電気スパーク（跳ね上がる・踏めない）' },

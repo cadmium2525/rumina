@@ -34,6 +34,7 @@ export const TILE = {
   CONCRETE: 70,                                    // コンクリートブロック
   MESSAGE: 71,                                     // メッセージブロック（下から叩くと文字が出る）
   NEON: 72,                                        // ネオン看板（飾り）
+  CANNON: 73,                                      // 砲台（砲弾を撃つ。SMW のキラー砲台）
 };
 export const TILE_COUNT = 96;
 // テーマ（背景と地面・坂の見た目）
@@ -48,7 +49,8 @@ export const SLOPE_K = {
 const SOLID = new Array(TILE_COUNT).fill(false);
 for (const t of [TILE.GROUND, TILE.STONE, TILE.TURN, TILE.QUESTION, TILE.USED, TILE.CAVE_ROCK,
   TILE.RUIN_BRICK, TILE.RUIN_BLOCK, TILE.CASTLE_BRICK, TILE.CASTLE_BLOCK, TILE.SPIKE,
-  TILE.SPIKE_DOWN, TILE.DUCT_TL, TILE.DUCT_TR, TILE.DUCT_L, TILE.DUCT_R, TILE.CONCRETE, TILE.MESSAGE]) SOLID[t] = true;
+  TILE.SPIKE_DOWN, TILE.DUCT_TL, TILE.DUCT_TR, TILE.DUCT_L, TILE.DUCT_R, TILE.CONCRETE, TILE.MESSAGE,
+  TILE.CANNON]) SOLID[t] = true;
 // 足元だけ固い（上から乗れる）
 const FLOOR = SOLID.slice();
 for (const t of [TILE.LEDGE, TILE.CAVE_LEDGE, TILE.RUIN_LEDGE, TILE.CASTLE_LEDGE, TILE.RAIL]) FLOOR[t] = true;

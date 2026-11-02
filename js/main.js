@@ -46,7 +46,7 @@ let showDebug = false;
 // ゲーム内イベント → 効果音と触覚フィードバック
 const HAPTIC_OF = {
   break: 'medium', shatter: 'medium', bounce: 'medium', shrink: 'heavy', die: 'heavy', grow: 'medium',
-  goal: 'heavy', tape: 'medium', message: 'light', bump: 'light', grab: 'light', throw: 'light', kick: 'light', splash: 'light',
+  goal: 'heavy', tape: 'medium', message: 'light', cannon: 'light', bump: 'light', grab: 'light', throw: 'light', kick: 'light', splash: 'light',
 };
 
 function step() {
@@ -145,7 +145,7 @@ function render() {
   view.drawBackground(g, camX, camY, world.level.theme);
   // ブロックから出てくる途中の光の玉はブロックの後ろ
   for (const a of world.actors) {
-    if (a.type === 'light' && a.emerge) actorSprites.drawActor(g, a, world.frame, a.x - camX, a.y - camY);
+    if ((a.type === 'light' || a.type === 'bullet') && a.emerge) actorSprites.drawActor(g, a, world.frame, a.x - camX, a.y - camY);
   }
   view.drawTiles(g, world.level, camX, camY, world.frame);
 
@@ -154,7 +154,7 @@ function render() {
   }
   for (const a of world.actors) {
     if (a.state === 'carried') continue; // 手前に描く
-    if (a.type === 'light' && a.emerge) continue;
+    if ((a.type === 'light' || a.type === 'bullet') && a.emerge) continue;
     if (a.type === 'goal') {
       actorSprites.drawGoalBack(g, a, world.frame, camX, camY);
       continue;

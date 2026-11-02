@@ -24,28 +24,28 @@ export function makeAkihabara() {
     l.fill(tx + 1, ty + 1, 1, h - 1, TILE.DUCT_R);
   };
 
-  // ---- A. スタート：メッセージ、高い所の光の玉、柱と積まれたカプセル ----
+  // ---- A. スタート：メッセージ、高い所の光の玉、砲台を積んだ柱 ----
   ground(0, 31);
   l.set(7, 20, TILE.MESSAGE);
-  l.messages.set('7,20', '1-1 アキハバラ\nようこそ、電気街へ！\n\nガチャカプセルは上から踏めるよ。\n飛んでいくカプセルを足場にしてみよう。\nトゲにはさわらないでね。');
+  l.messages.set('7,20', '1-1 アキハバラ\nようこそ、電気街へ！\n\n砲台はときどき砲弾を撃ってくるよ。\n砲弾は上から踏めるから、足場にしてみよう。\nトゲにはさわらないでね。');
   l.question(11, 19, 'light');
-  l.fill(17, 19, 1, 5, TILE.CONCRETE);
-  for (let ty = 19; ty <= 23; ty++) spawn('capsule', 15, ty);
+  l.fill(17, 19, 1, 5, TILE.CANNON);
 
-  // ---- B. 最初の谷：飛んでいくカプセルと、線路の足場 ----
-  for (let ty = 17; ty <= 21; ty++) spawn('capsule', 30, ty);
+  // ---- B. 最初の谷：向こう岸の砲台から飛んでくる砲弾を踏み台に。線路の足場もある ----
+  l.fill(47, 19, 1, 5, TILE.CANNON);
   l.fill(36, 23, 3, 1, TILE.RAIL);
   l.fill(41, 22, 2, 1, TILE.RAIL);
 
   // ---- C. 地上：トゲムシ、足元のトゲ、警備ロボ、ドローン ----
   ground(46, 80);
-  spawn('spiker', 50, G - 1);
-  spawn('spiker', 53, G - 1);
+  spawn('spiker', 51, G - 1);
+  spawn('capsule', 54, G - 1);
   l.set(58, G - 1, TILE.SPIKE);
   spawn('robo', 61, G - 1);
   l.set(64, G - 1, TILE.SPIKE);
   spawn('robo', 67, G - 1);
   l.fill(70, G - 1, 2, 1, TILE.SPIKE);
+  spawn('capsule', 76, G - 1);
   spawn('drone', 74, 19);
   spawn('drone', 78, 17);
 

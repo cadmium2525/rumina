@@ -871,3 +871,43 @@ export const SPARK_A = [
   '.......K........',
 ];
 export const SPARK_B = SPARK_A.map((r) => [...r].reverse().join(''));
+
+// 砲台（タイル）。丸い発射口とネオンの輪
+export const CANNON = [
+  'KKKKKKKKKKKKKKKK',
+  'KnnnnnnnnnnnnnnK',
+  'KnHKKKKKKKKKKHnK',
+  'KnKKppppppppKKnK',
+  'KnKpPKKKKKKPpKnK',
+  'KnKpKKHHHHKKpKnK',
+  'KnKpKHKKKKHKpKnK',
+  'KnKpKHKKKKHKpKnK',
+  'KnKpKHKKKKHKpKnK',
+  'KnKpKHKKKKHKpKnK',
+  'KnKpKKHHHHKKpKnK',
+  'KnKpPKKKKKKPpKnK',
+  'KnKKppppppppKKnK',
+  'KnHKKKKKKKKKKHnK',
+  'KnnnnnnnnnnnnnnK',
+  'KKKKKKKKKKKKKKKK',
+];
+
+// 砲弾。左向き（右へ飛ぶ時は反転）。銀色の弾体にピンクの帯と尾翼
+export const SHELLBULLET = [
+  '................',
+  '..........KKK...',
+  '.....KKKKKKpKK..',
+  '...KKgggggKpKpK.',
+  '..KwwgggggKpKpK.',
+  '.KwwgggggggKKKK.',
+  'KwwgggggggggKhGK',
+  'KwggggggggggKhGK',
+  'KggggggggggGKhGK',
+  'KgggggggggGGKhGK',
+  '.KGgggggGGGKKKK.',
+  '..KGGGGGGGKpKpK.',
+  '...KKGGGGGKpKpK.',
+  '.....KKKKKKpKK..',
+  '..........KKK...',
+  '................',
+];

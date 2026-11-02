@@ -209,3 +209,9 @@ export const END_WALK_UNTIL = 0x28;   // これ以上の間は右へ歩かされ
 export const END_WALK_XSPEED = 5;
 export const VICTORY_TIME = 64;       // 勝利ポーズ (timer_show_victory_pose)
 export const VICTORY_POSE = 0x26;     // PlayerState00_SetMarioPeaceImg
+
+// ---- 砲台と砲弾 (ShooterSpr01_BulletBillShooter / Spr01C_BulletBill) ----
+export const SHOOTER_TIME = 96;      // 2 フレームに 1 減る → 192 フレームごとに撃つ
+export const SHOOTER_NEAR = 0x11;    // ルミナが横にこれより近いと撃たない
+export const BULLET_XSPEED = 0x20;   // kSpr01C_BulletBill_XSpeed[0]
+export const BULLET_EMERGE = 16;     // 出てすぐ砲台の後ろに描く時間 ($1540)

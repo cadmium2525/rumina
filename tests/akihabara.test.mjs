@@ -52,35 +52,80 @@ const lv = new Level(data);
   console.log('message: ok');
 }
 {
-  // ガチャカプセル：近づくと右へ飛ぶ。上から踏むと跳ねる
+  // 砲台：192 フレームごとに、ルミナのいる側へ砲弾を撃つ (ShooterSpr01_BulletBillShooter)
   const w = new World(data);
   w.introTimer = 0;
   w.points = [];
   w.actors = w.actors.filter((a) => a.type === 'goal');
-  const c = new Capsule(20 * 16, 20 * 16);
-  c.delay = 0;
-  w.actors.push(c);
-  w.player.xpos = 14 * 16;
-  run(w, 5, () => [0]);
-  assert.ok(c.flying);
-  const x = c.x;
-  run(w, 16, () => [0]);
-  assert.equal(c.x, x + 16, '1px/frame to the right');
+  w.level.fill(0, 0, w.level.width, 24, TILE.EMPTY);
+  w.level.set(12, 22, TILE.CANNON);
+  w.shooters = [{ x: 12 * 16, y: 22 * 16, timer: 0 }];
   const p = w.player;
-  p.xpos = c.x;
-  p.ypos = c.y - 40;
-  p.inAir = 0x24;
-  p.yspeed = 0x20;
+  p.xpos = 3 * 16;
+  const shots = [];
+  for (let f = 0; f < 400; f++) {
+    w.events.length = 0;
+    run(w, 1, () => [0]);
+    if (w.events.includes('cannon')) shots.push(f);
+  }
+  assert.ok(shots.length >= 2, `fired ${shots}`);
+  assert.equal(shots[1] - shots[0], 192, 'every 192 frames');
+  const b = w.actors.find((a) => a.type === 'bullet');
+  assert.ok(b, 'bullet exists');
+  assert.equal(b.xs, -0x20, 'flies toward Rumina (left) at 2px/frame');
+  // すぐ横（17px 未満）にいると撃たない
+  const w2 = new World(data);
+  w2.introTimer = 0;
+  w2.points = [];
+  w2.actors = [];
+  w2.shooters = [{ x: 6 * 16, y: 22 * 16, timer: 0 }];
+  w2.player.xpos = 6 * 16 + 8;
+  run(w2, 400, () => [0]);
+  assert.ok(!w2.actors.some((a) => a.type === 'bullet'), 'no shot when close');
+  // 右にいれば右へ
+  const w3 = new World(data);
+  w3.introTimer = 0;
+  w3.points = [];
+  w3.actors = [];
+  w3.shooters = [{ x: 4 * 16, y: 22 * 16, timer: 0 }];
+  w3.player.xpos = 10 * 16;
+  run(w3, 2, () => [0]);
+  const b3 = w3.actors.find((a) => a.type === 'bullet');
+  assert.equal(b3.xs, 0x20, 'right');
+  // 砲弾は上から踏める（踏むと落ちる）
+  const p3 = w3.player;
+  for (let f = 0; f < 3; f++) run(w3, 1, () => [0]);
+  p3.xpos = b3.x + 8;
+  p3.ypos = b3.y - 36;
+  p3.inAir = 0x24;
+  p3.yspeed = 0x20;
   let bounced = false;
-  for (let f = 0; f < 20 && !bounced; f++) bounced = run(w, 1, () => [0])[0].ys < -20;
-  assert.ok(bounced && c.dying, 'stomped');
-  assert.equal(p.hurtTimer, 0);
+  for (let f = 0; f < 10 && !bounced; f++) bounced = run(w3, 1, () => [0])[0].ys < -20;
+  assert.ok(bounced && b3.dying, 'stomped bullet');
+  assert.equal(p3.hurtTimer, 0);
+  console.log('cannon: ok');
+}
+{
+  // ガチャカプセル：地面を転がり、壁で向きを変える
+  const w = new World(data);
+  w.introTimer = 0;
+  w.points = [];
+  w.actors = [];
+  w.shooters = [];
+  w.level.set(6, 23, TILE.CONCRETE);
+  const c = new Capsule(9 * 16, 23 * 16);
+  w.actors.push(c);
+  w.player.xpos = 20 * 16;
+  run(w, 120, () => [0]);
+  assert.equal(c.facing, 1, 'turned at the wall');
+  assert.equal(c.y, 23 * 16, 'on the ground');
 }
 {
   // 警備ロボ：3 回踏むと倒れる
   const w = new World(data);
   w.introTimer = 0;
   w.points = [];
+  w.shooters = [];
   const r = new Robo(10 * 16, 23 * 16);
   r.timer = 999;
   w.actors.push(r);
@@ -109,6 +154,7 @@ const lv = new Level(data);
   const w = new World(data);
   w.introTimer = 0;
   w.points = [];
+  w.shooters = [];
   const d = new Drone(10 * 16, 15 * 16);
   const s = new Spark(14 * 16, 18 * 16);
   s.timer = 1;
@@ -133,6 +179,7 @@ const lv = new Level(data);
   w.introTimer = 0;
   w.points = [];
   w.actors = [];
+  w.shooters = [];
   const l = w.level;
   l.fill(4, 19, 3, 1, TILE.SPIKE_DOWN);
   assert.ok(isHurtBlock(TILE.SPIKE_DOWN));
