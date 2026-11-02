@@ -4,6 +4,7 @@ import { POSE } from './player.js';
 import {
   PAL_OBJ, GIFT, SPIKER_A, SPIKER_B, PIECE_GOLD, PIECE_GIFT, STAR_A, STAR_B,
   SHELL_SIDE, SHELL_FRONT, SHELL_EDGE, LIGHT_ORB,
+  PAL_AKIBA, CAPSULE, ROBO_A, ROBO_B, DRONE_A, DRONE_B, SPARK_A, SPARK_B,
 } from './art.js';
 
 export const PALETTE = {
@@ -146,6 +147,12 @@ export class ActorSprites {
   constructor() {
     this.gift = gridToCanvas(GIFT, PAL_OBJ);
     this.light = gridToCanvas(LIGHT_ORB, PAL_OBJ);
+    // 電気街の敵（右向きと左向き）
+    const both = (grid) => ({ right: gridToCanvas(grid, PAL_AKIBA, false), left: gridToCanvas(grid, PAL_AKIBA, true) });
+    this.capsule = both(CAPSULE);
+    this.robo = [both(ROBO_A), both(ROBO_B)];
+    this.drone = [both(DRONE_A), both(DRONE_B)];
+    this.spark = [both(SPARK_A), both(SPARK_B)];
     this.spiker = [SPIKER_A, SPIKER_B].map((f) => ({
       right: gridToCanvas(f, PAL_OBJ, false),
       left: gridToCanvas(f, PAL_OBJ, true),
@@ -203,7 +210,26 @@ export class ActorSprites {
     this.drawPost(g, goal.x - camX + 20, goal.bottom - camY, frame);
   }
 
+  // 上下逆さまに描く（やられた敵）
+  drawFlipped(g, img, x, y) {
+    g.save();
+    g.translate(x, y + img.height);
+    g.scale(1, -1);
+    g.drawImage(img, 0, 0);
+    g.restore();
+  }
+
   drawActor(g, a, frame, x, y) {
+    const ak = this.akibaImage(a, frame);
+    if (ak) {
+      const [img, dy] = ak;
+      if (a.dying) this.drawFlipped(g, img, x, y + dy);
+      else {
+        if (a.flash && (a.flash >> 1) & 1) return; // 踏まれた直後は点滅
+        g.drawImage(img, x, y + dy);
+      }
+      return;
+    }
     if (a.type === 'light') {
       // 出てくる最初の 8 フレームは描かない (1540 < 0x36)
       if (a.emerge >= 0x36) return;
@@ -252,6 +278,16 @@ export class ActorSprites {
     } else {
       g.drawImage(img, x, y);
     }
+  }
+
+  // 電気街の敵の絵と縦のずれ（無ければ null）
+  akibaImage(a, frame) {
+    const dir = (set) => (a.facing ? set.right : set.left);
+    if (a.type === 'capsule') return [this.capsule.right, 0];
+    if (a.type === 'robo') return [dir(this.robo[!a.dying && a.onFloor && a.timer < 10 ? 1 : 0]), -8];
+    if (a.type === 'drone') return [dir(this.drone[(frame >> 1) & 1]), 0];
+    if (a.type === 'spark') return [this.spark[(frame >> 2) & 1].right, 0];
+    return null;
   }
 
   // かけら：向きが 8 通りに回る (kMExtSpr01_BrickPiece_Flip)

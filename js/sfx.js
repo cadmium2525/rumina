@@ -72,6 +72,7 @@ export const sfx = {
     const notes = [523, 659, 784, 1047, 784, 1047, 1319];
     notes.forEach((f, i) => setTimeout(() => tone('square', f, f, i === notes.length - 1 ? 0.5 : 0.12, 0.07), i * 120));
   },
+  message() { tone('square', 880, 1320, 0.1, 0.06); },
   tape() { tone('triangle', 900, 1800, 0.25, 0.09); },
   powerup() { tone('square', 600, 1200, 0.15, 0.07); },
   sprout() { tone('triangle', 200, 600, 0.3, 0.08); },

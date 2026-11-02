@@ -2,8 +2,10 @@
 // DOM に依存しない（描画は main.js / *_view.js）。
 import { Player } from './player.js';
 import { Level, Camera, GROUND_Y, SCREEN_W, LEVEL_H, TILE, CAM_Y } from './level.js';
-import { GiftBox, Shell, Spiker, LightOrb, Goal } from './actors.js';
+import { GiftBox, Shell, Spiker, LightOrb, Goal, Capsule, Robo, Drone, Spark } from './actors.js';
 import { BRICK_X, BRICK_Y, BRICK_XSPEED, BRICK_YSPEED } from './smw_tables.js';
+
+const INTRO_TIME = 100;
 
 export class World {
   // levelData: エディタで作ったステージ（無ければ標準のテストステージ）
@@ -24,6 +26,10 @@ export class World {
     this.goal = this.level.goal ? new Goal(this.level.goal.tx, this.level.goal.ty) : null;
     if (this.goal) this.actors.push(this.goal);
     this.cleared = false;
+    this.message = null;  // 表示中のメッセージ（その間ゲームは止まる）
+    this.messageTimer = 0;
+    // 始まる時にステージ名を出す（その間ゲームは止まる）
+    this.introTimer = this.level.title ? INTRO_TIME : 0;
     this.env = {
       level: this.level,
       camX: 0,
@@ -39,6 +45,17 @@ export class World {
 
   // ブロックを叩いた（下から頭で・横から甲羅で）。？ブロックなら中身が出る
   hitTile(tx, ty) {
+    if (this.level.tileAt(tx, ty) === TILE.MESSAGE) {
+      // メッセージブロック：跳ねて文字が出る
+      this.level.bounceTile(tx, ty);
+      const text = this.level.messages.get(`${tx},${ty}`);
+      if (text) {
+        this.message = text;
+        this.messageTimer = 0;
+        this.emit('message');
+      }
+      return;
+    }
     const item = this.level.hitQuestion(tx, ty);
     if (item === 'light') {
       this.actors.push(new LightOrb(tx * 16, ty * 16));
@@ -91,6 +108,17 @@ export class World {
   }
 
   step(pad) {
+    if (this.introTimer) {
+      this.introTimer--;
+      return;
+    }
+    if (this.message) {
+      // ボタンを押すと閉じる（出てすぐは閉じない）
+      this.messageTimer++;
+      const pressed = (pad.press1 & 0xc0) || (pad.press2 & 0x80);
+      if (this.messageTimer > 20 && pressed) this.message = null;
+      return;
+    }
     this.frame = (this.frame + 1) & 0xff;
     const env = this.env;
     env.camX = this.camera.x;
@@ -139,7 +167,7 @@ export class World {
       }
       if (p.state === 'used' && far) p.state = 'idle';
       if (p.state === 'idle' && near) {
-        const make = { gift: GiftBox, shell: Shell, spiker: Spiker }[p.type];
+        const make = { gift: GiftBox, shell: Shell, spiker: Spiker, capsule: Capsule, robo: Robo, drone: Drone, spark: Spark }[p.type];
         const a = new make(p.x, p.y);
         if (a.type === 'spiker') a.facing = this.player.xpos > p.x ? 1 : 0;
         this.actors.push(a);

@@ -617,3 +617,257 @@ export const WINDOW = [
   '.KHHHHHHHHHHHHK.',
   '.KKKKKKKKKKKKKK.',
 ];
+
+// ---- 電気街（1-1 アキハバラ） ----
+export const PAL_AKIBA = {
+  K: '#1c1424',
+  w: '#fafaff', g: '#d0d4e0', G: '#9aa0b4', h: '#646a80', H: '#3e4256',
+  r: '#ff5a78', R: '#b02848', p: '#ff78c8', P: '#c03898',
+  c: '#70f4ff', C: '#2aa8d0', y: '#ffec70', Y: '#f0b028',
+  b: '#5a84f0', B: '#2c4aa0', o: '#ff9a48', n: '#3a3048',
+};
+
+export const SPIKE_DOWN = SPIKE.slice().reverse();
+
+export const CONCRETE = [
+  'KKKKKKKKKKKKKKKK',
+  'KwwwwwwwwwwwwwgK',
+  'KwggggggggggggGK',
+  'KwgGgggggggGggGK',
+  'KwggggggggggggGK',
+  'KwgggggGggggggGK',
+  'KwggggggggggggGK',
+  'KwggggggggggggGK',
+  'KwgggGggggggggGK',
+  'KwggggggggggGgGK',
+  'KwggggggggggggGK',
+  'KwggGggggggggGGK',
+  'KwggggggggggggGK',
+  'KwggggggGgggggGK',
+  'KgGGGGGGGGGGGGhK',
+  'KKKKKKKKKKKKKKKK',
+];
+
+// ダクト（左右 2 枚で 1 本）。上の口と胴
+export const DUCT_TL = [
+  'KKKKKKKKKKKKKKKK',
+  'Kwwwwwwwwwwwwwww',
+  'KwgggggggggggggG',
+  'KwgKKKKKKKKKKKKK',
+  'KwgKHHHHHHHHHHHH',
+  'KwgKHnHnHnHnHnHn',
+  'KgGKHHHHHHHHHHHH',
+  'KKKKKKKKKKKKKKKK',
+  '.KwgggggggGggggg',
+  '.KwgggggggGggggg',
+  '.KwgGGgggggggggg',
+  '.KwgggggggGggggg',
+  '.KwgggggggGggggg',
+  '.KwgGGgggggggggg',
+  '.KwgggggggGggggg',
+  '.KwgggggggGggggg',
+];
+export const DUCT_TR = DUCT_TL.map((r) => [...r].reverse().join('')
+  .replace(/w/g, '1').replace(/G/g, 'w').replace(/1/g, 'G'));
+export const DUCT_L = [
+  '.KwgggggggGggggg',
+  '.KwgGGgggggggggg',
+  '.KwgggggggGggggg',
+  '.KwgggggggGggggg',
+  '.KwgGGgggggggggg',
+  '.KwgggggggGggggg',
+  '.KwgggggggGggggg',
+  '.KKKKKKKKKKKKKKK',
+  '.KwgggggggGggggg',
+  '.KwgGGgggggggggg',
+  '.KwgggggggGggggg',
+  '.KwgggggggGggggg',
+  '.KwgGGgggggggggg',
+  '.KwgggggggGggggg',
+  '.KwgggggggGggggg',
+  '.KwgggggggGggggg',
+];
+export const DUCT_R = DUCT_L.map((r) => [...r].reverse().join('')
+  .replace(/w/g, '1').replace(/G/g, 'w').replace(/1/g, 'G'));
+
+// 高架の線路（上からだけ乗れる）
+export const RAIL = [
+  'KKKKKKKKKKKKKKKK',
+  'gggggggggggggggg',
+  'GGGGGGGGGGGGGGGG',
+  'KKKKKKKKKKKKKKKK',
+  'hHhhhhHhhhhhHhhh',
+  'KKKKKKKKKKKKKKKK',
+  '.KhK..KhK..KhK..',
+  '..KhK.KhK.KhK...',
+  '...KhKKhKKhK....',
+  '....KhhhhhK.....',
+  '.....KKKKK......',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+];
+
+export const MESSAGE_BLOCK = [
+  '.KKKKKKKKKKKKKK.',
+  'KppppppppppppppK',
+  'KpwwwwwwwwwwwwPK',
+  'KpwKKKKKKKKKKwPK',
+  'KpwKwwwwwwwwKwPK',
+  'KpwKwKKwKKwwKwPK',
+  'KpwKwwwwwwwwKwPK',
+  'KpwKwKKKwKKwKwPK',
+  'KpwKwwwwwwwwKwPK',
+  'KpwKKKwKKKKKKwPK',
+  'KpwwwKwKwwwwwwPK',
+  'KpwwwwKKwwwwwwPK',
+  'KpwwwwwwwwwwwwPK',
+  'KpPPPPPPPPPPPPPK',
+  'KPPPPPPPPPPPPPPK',
+  '.KKKKKKKKKKKKKK.',
+];
+
+// ネオン看板（飾り）。光る枠と、文字のような線
+export const NEON = [
+  'KKKKKKKKKKKKKKKK',
+  'KnnnnnnnnnnnnnnK',
+  'KnppppppppppppnK',
+  'KnpnnnnnnnnnnpnK',
+  'KnpnccnnccccnpnK',
+  'KnpnnccnnnncnpnK',
+  'KnpncccnnccnnpnK',
+  'KnpnncnnnncnnpnK',
+  'KnpnnnnnnnnnnpnK',
+  'KnpnyyyyynyynpnK',
+  'KnpnnnynnnnynpnK',
+  'KnpnyyyynyyynpnK',
+  'KnpnnnnnnnnnnpnK',
+  'KnppppppppppppnK',
+  'KnnnnnnnnnnnnnnK',
+  'KKKKKKKKKKKKKKKK',
+];
+
+// ガチャカプセル（飛んでくる弾）。右向き
+export const CAPSULE = [
+  '................',
+  '.....KKKKKK.....',
+  '...KKccccccKK...',
+  '..KcwwccccccCK..',
+  '.KcwwccyyccccCK.',
+  '.KcwcccyyyycccK.',
+  'KccccyyyyyyccCCK',
+  'KcccccyyyycccCCK',
+  'KKKKKKKKKKKKKKKK',
+  'KooooooooooooooK',
+  'KoKKoooooooKKooK',
+  '.KoKwKoooKwKooK.',
+  '.KoooooooooooRK.',
+  '..KoooKKKKooRK..',
+  '...KKRRRRRRKK...',
+  '.....KKKKKK.....',
+];
+
+// 警備ロボ（何度か踏まないと倒れない）。16x24、右向き
+export const ROBO_A = [
+  '......KKKK......',
+  '.......KyK......',
+  '...KKKKKKKKKK...',
+  '..KbbbbbbbbbbK..',
+  '..KbKKKKKKKKbK..',
+  '..KbKccKKccKbK..',
+  '..KbKccKKccKbK..',
+  '..KbKKKKKKKKbK..',
+  '..KbbbbbbbbbbK..',
+  '..KBBBBBBBBBBK..',
+  '.KKKKKKKKKKKKKK.',
+  'KgKwwwwwwwwwwKgK',
+  'KgKwrrwwyywwwKgK',
+  'KGKwrrwwyywwwKGK',
+  'KKKwwwwwwwwwwKKK',
+  '..KwGGGGGGGGwK..',
+  '..KwwwwwwwwwwK..',
+  '..KKKKKKKKKKKK..',
+  '...KhhK..KhhK...',
+  '...KhhK..KhhK...',
+  '...KhhK..KhhK...',
+  '..KKBBK..KBBKK..',
+  '..KBBBK..KBBBK..',
+  '..KKKKK..KKKKK..',
+];
+// しゃがんで跳ぶ前
+export const ROBO_B = [
+  '................',
+  '................',
+  '................',
+  '......KKKK......',
+  '.......KyK......',
+  '...KKKKKKKKKK...',
+  '..KbbbbbbbbbbK..',
+  '..KbKKKKKKKKbK..',
+  '..KbKrrKKrrKbK..',
+  '..KbKrrKKrrKbK..',
+  '..KbKKKKKKKKbK..',
+  '..KbbbbbbbbbbK..',
+  '..KBBBBBBBBBBK..',
+  '.KKKKKKKKKKKKKK.',
+  'KgKwwwwwwwwwwKgK',
+  'KgKwrrwwyywwwKgK',
+  'KGKwrrwwyywwwKGK',
+  'KKKwwwwwwwwwwKKK',
+  '..KwGGGGGGGGwK..',
+  '..KKKKKKKKKKKK..',
+  '..KKhhKKKKhhKK..',
+  '..KBBBBKKBBBBK..',
+  '..KBBBBKKBBBBK..',
+  '..KKKKKKKKKKKK..',
+];
+
+// ドローン（ふわふわ飛ぶ）。プロペラ 2 コマ
+export const DRONE_A = [
+  'KKKKK......KKKKK',
+  '..K..........K..',
+  '..K..........K..',
+  '.KKK........KKK.',
+  '.KhKKKKKKKKKKhK.',
+  '..KGGGGGGGGGGK..',
+  '..KGKKKKKKKKGK..',
+  '..KGKcccccCKGK..',
+  '..KGKcwwcccKGK..',
+  '..KGKcwwcccKGK..',
+  '..KGKcccccCKGK..',
+  '..KGKKKKKKKKGK..',
+  '..KhGGGGGGGGhK..',
+  '...KKKKKKKKKK...',
+  '....KK....KK....',
+  '...KK......KK...',
+];
+export const DRONE_B = [
+  '..KKK......KKK..',
+  '..K..........K..',
+  '..K..........K..',
+  '.KKK........KKK.',
+  ...DRONE_A.slice(4),
+];
+
+// 電気スパーク（ダクトから跳ね上がる）
+export const SPARK_A = [
+  '.......K........',
+  '......KyK...K...',
+  '..K...KyK..KyK..',
+  '.KyK.KKyKKKyK...',
+  '..KyKccccccKK...',
+  '...KcwwwwwwcK...',
+  '..KcwwyyyywwcKK.',
+  'KKcwyyyyyyyywcyK',
+  'KycwyyyyyyyywcKK',
+  '.KKcwyyyyyywcK..',
+  '...KcwwwwwwcK...',
+  '...KKccccccKyK..',
+  '..KyKKKyKKK.KyK.',
+  '.KyK..KyK....K..',
+  '..K...KyK.......',
+  '.......K........',
+];
+export const SPARK_B = SPARK_A.map((r) => [...r].reverse().join(''));

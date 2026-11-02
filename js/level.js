@@ -27,10 +27,17 @@ export const TILE = {
   CASTLE_BRICK: 55, CASTLE_BLOCK: 56, CASTLE_LEDGE: 57, TORCH: 60, WINDOW: 61,
   // トゲ（固い。触れるとダメージ：SMW のムンチャー/お城のトゲ）とマグマ（足が入るとミス）
   SPIKE: 58, LAVA: 59,
+  // 電気街（1-1 アキハバラ）
+  SPIKE_DOWN: 64,                                  // 天井から下向きのトゲ（トゲと同じ）
+  DUCT_TL: 65, DUCT_TR: 66, DUCT_L: 67, DUCT_R: 68, // ダクト（2 マス幅。上が口）
+  RAIL: 69,                                        // 高架の線路（上からだけ乗れる）
+  CONCRETE: 70,                                    // コンクリートブロック
+  MESSAGE: 71,                                     // メッセージブロック（下から叩くと文字が出る）
+  NEON: 72,                                        // ネオン看板（飾り）
 };
-export const TILE_COUNT = 64;
+export const TILE_COUNT = 96;
 // テーマ（背景と地面・坂の見た目）
-export const THEMES = ['grass', 'cave', 'ruins', 'castle'];
+export const THEMES = ['grass', 'cave', 'ruins', 'castle', 'akiba'];
 // 使っている坂：ゆるい右上がり (k8,k9)・ゆるい右下がり (k10,k11)・45°右上がり (k12)・45°右下がり (k13)
 export const SLOPE_K = {
   UP_G1: 8, UP_G2: 9, DOWN_G1: 10, DOWN_G2: 11, UP_45: 12, DOWN_45: 13,
@@ -40,10 +47,13 @@ export const SLOPE_K = {
 // ブロックとして固いか（坂は足元だけ特別扱いなので、横・頭・スプライトからは固くない）
 const SOLID = new Array(TILE_COUNT).fill(false);
 for (const t of [TILE.GROUND, TILE.STONE, TILE.TURN, TILE.QUESTION, TILE.USED, TILE.CAVE_ROCK,
-  TILE.RUIN_BRICK, TILE.RUIN_BLOCK, TILE.CASTLE_BRICK, TILE.CASTLE_BLOCK, TILE.SPIKE]) SOLID[t] = true;
+  TILE.RUIN_BRICK, TILE.RUIN_BLOCK, TILE.CASTLE_BRICK, TILE.CASTLE_BLOCK, TILE.SPIKE,
+  TILE.SPIKE_DOWN, TILE.DUCT_TL, TILE.DUCT_TR, TILE.DUCT_L, TILE.DUCT_R, TILE.CONCRETE, TILE.MESSAGE]) SOLID[t] = true;
 // 足元だけ固い（上から乗れる）
 const FLOOR = SOLID.slice();
-for (const t of [TILE.LEDGE, TILE.CAVE_LEDGE, TILE.RUIN_LEDGE, TILE.CASTLE_LEDGE]) FLOOR[t] = true;
+for (const t of [TILE.LEDGE, TILE.CAVE_LEDGE, TILE.RUIN_LEDGE, TILE.CASTLE_LEDGE, TILE.RAIL]) FLOOR[t] = true;
+// 触れるとダメージを受けるブロック
+export const isHurtBlock = (t) => t === TILE.SPIKE || t === TILE.SPIKE_DOWN;
 // 上からだけ乗れる足場か
 export const isLedge = (t) => FLOOR[t] && !SOLID[t];
 // つかまって登れる（ツタ・ハシゴ）
@@ -59,6 +69,9 @@ const BOUNCE_OFFSETS = [-4, -7, -8, -9, -8, -6, -3, 0];
 // 叩かれてから元のブロックに戻るまで（bounce_spr07_spinning_turn_block_despawn_timer = 0xFF）
 const SPIN_TIME = 256;
 
+// ステージに置ける敵・物
+export const SPAWN_TYPES = ['gift', 'shell', 'spiker', 'capsule', 'robo', 'drone', 'spark'];
+
 export const MIN_WIDTH = 16;
 export const MAX_WIDTH = 1024;
 
@@ -71,6 +84,8 @@ export class Level {
     this.theme = 'grass';
     this.start = { tx: 4, ty: GROUND_Y / 16 - 1 }; // スタート位置（足元のタイル）
     this.goal = null; // ゴール {tx, ty}（ゲートの足元のタイル）
+    this.messages = new Map(); // メッセージブロックの文 'tx,ty' → 文字列
+    this.title = '';           // 始まる時に出す名前（例「1-1 アキハバラ」）
     if (data) {
       this.load(data);
     } else {
@@ -95,6 +110,7 @@ export class Level {
     }
     this.spawns = this.spawns.filter((s) => s.x < width * 16);
     for (const k of [...this.contents.keys()]) if (+k.split(',')[0] >= width) this.contents.delete(k);
+    for (const k of [...this.messages.keys()]) if (+k.split(',')[0] >= width) this.messages.delete(k);
     if (this.start.tx >= width) this.start.tx = width - 1;
     if (this.goal && this.goal.tx >= width) this.goal = null;
   }
@@ -110,7 +126,7 @@ export class Level {
       i += n;
     }
     return {
-      format: 'rumina-level', version: 1,
+      format: 'rumina-level', version: 1, title: this.title,
       width: this.width, height: TILES_H, theme: this.theme,
       start: { ...this.start },
       goal: this.goal ? { ...this.goal } : null,
@@ -119,6 +135,10 @@ export class Level {
       items: [...this.contents].map(([k, item]) => {
         const [tx, ty] = k.split(',').map(Number);
         return { tx, ty, item };
+      }),
+      messages: [...this.messages].map(([k, text]) => {
+        const [tx, ty] = k.split(',').map(Number);
+        return { tx, ty, text };
       }),
     };
   }
@@ -136,9 +156,11 @@ export class Level {
     this.theme = THEMES.includes(d.theme) ? d.theme : 'grass';
     if (d.start) this.start = { tx: d.start.tx | 0, ty: d.start.ty | 0 };
     this.goal = d.goal ? { tx: d.goal.tx | 0, ty: d.goal.ty | 0 } : null;
-    this.spawns = (d.spawns ?? []).filter((s) => ['gift', 'shell', 'spiker'].includes(s.type))
+    this.spawns = (d.spawns ?? []).filter((s) => SPAWN_TYPES.includes(s.type))
       .map((s) => ({ type: s.type, x: s.tx * 16, y: s.ty * 16 }));
     this.contents = new Map((d.items ?? []).map((e) => [`${e.tx},${e.ty}`, e.item]));
+    this.messages = new Map((d.messages ?? []).map((e) => [`${e.tx},${e.ty}`, String(e.text ?? '')]));
+    this.title = String(d.title ?? '');
   }
 
   set(tx, ty, v) {
@@ -280,7 +302,8 @@ export class Level {
   // ターンブロックが下や横から叩かれた（クルクルブロック）。
   // 8 フレーム跳ねたあと回転を始め、回っている間はすり抜けられる。約 4.3 秒で元に戻る
   bounceTile(tx, ty) {
-    if (this.tileAt(tx, ty) !== TILE.TURN) return;
+    const t = this.tileAt(tx, ty);
+    if (t !== TILE.TURN && t !== TILE.MESSAGE) return;
     if (this.bounces.some((b) => b.tx === tx && b.ty === ty)) return;
     this.bounces.push({ tx, ty, t: 0 });
   }

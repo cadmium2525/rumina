@@ -11,7 +11,7 @@ import {
   GROW_IMAGES, GROW_TIME, DEATH_TIME, DEATH_YSPEED, DEATH_POSE,
   END_LEVEL_TIME, END_WALK_UNTIL, END_WALK_XSPEED, VICTORY_TIME, VICTORY_POSE,
 } from './smw_tables.js';
-import { TILE, isSlope, slopeK, isCeilingSlope, isClimbable } from './level.js';
+import { TILE, isSlope, slopeK, isCeilingSlope, isClimbable, isHurtBlock } from './level.js';
 
 const u8 = (v) => v & 0xff;
 const s8 = (v) => ((v & 0xff) << 24) >> 24;
@@ -487,7 +487,7 @@ export class Player {
 
   // ダメージを受けるブロック (RunPlayerBlockCode_CheckIfPlayerTouchingHurtBlock, 00F120)
   hurtBlock(t) {
-    if (t === TILE.SPIKE && this.state === STATE.NORMAL) this.hurt();
+    if (isHurtBlock(t) && this.state === STATE.NORMAL) this.hurt();
   }
 
   // ふつうのブロックに着地 (LABEL_99 → 00EE3A → 00EE85)

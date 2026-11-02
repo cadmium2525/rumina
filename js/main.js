@@ -1,4 +1,6 @@
 import { World } from './world.js';
+import { Level } from './level.js';
+import { makeAkihabara } from './stages/akihabara.js';
 import { RuminaSprite, SmokeSprites, ActorSprites } from './sprites.js';
 import { LevelView } from './level_view.js';
 import { SCREEN_W, SCREEN_H } from './level.js';
@@ -20,17 +22,21 @@ const smokeSprites = new SmokeSprites();
 const actorSprites = new ActorSprites();
 const debugEl = document.getElementById('debug');
 
-// ?level=custom ならエディタで作ったステージ（localStorage）を遊ぶ
+// 遊ぶステージ：ふだんは 1-1 アキハバラ。
+// ?level=custom ならエディタで作ったステージ（localStorage）、?level=test なら操作確認用のテストステージ
 export const PLAY_KEY = 'rumina.play';
-function customLevel() {
-  if (new URLSearchParams(location.search).get('level') !== 'custom') return null;
-  try {
-    return JSON.parse(localStorage.getItem(PLAY_KEY));
-  } catch {
-    return null;
+function chooseLevel() {
+  const which = new URLSearchParams(location.search).get('level');
+  if (which === 'custom') {
+    try {
+      const d = JSON.parse(localStorage.getItem(PLAY_KEY));
+      if (d) return d;
+    } catch { /* 壊れていたら 1-1 */ }
   }
+  if (which === 'test') return new Level().toData();
+  return makeAkihabara();
 }
-const levelData = customLevel();
+const levelData = chooseLevel();
 let world = new World(levelData);
 let paused = false;
 let clearTimer = 0;
@@ -40,7 +46,7 @@ let showDebug = false;
 // ゲーム内イベント → 効果音と触覚フィードバック
 const HAPTIC_OF = {
   break: 'medium', shatter: 'medium', bounce: 'medium', shrink: 'heavy', die: 'heavy', grow: 'medium',
-  goal: 'heavy', tape: 'medium', bump: 'light', grab: 'light', throw: 'light', kick: 'light', splash: 'light',
+  goal: 'heavy', tape: 'medium', message: 'light', bump: 'light', grab: 'light', throw: 'light', kick: 'light', splash: 'light',
 };
 
 function step() {
@@ -79,6 +85,39 @@ function drawPMeter() {
   g.fillStyle = n >= 7 ? (blink ? '#ffffff' : '#ff5050') : '#8a80a0';
   const P = ['111.', '1..1', '111.', '1...', '1...'];
   P.forEach((row, y) => [...row].forEach((c, x) => c === '1' && g.fillRect(61 + x, 8 + y, 1, 1)));
+}
+
+// ステージの始まり：黒い画面にステージ名
+function drawIntro() {
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, SCREEN_W, SCREEN_H);
+  g.save();
+  g.globalAlpha = Math.min(1, world.introTimer / 20);
+  g.font = 'bold 16px system-ui, sans-serif';
+  g.textAlign = 'center';
+  g.fillStyle = '#ffe070';
+  g.fillText(world.level.title, SCREEN_W / 2, SCREEN_H / 2);
+  g.restore();
+}
+
+// メッセージの枠（ゲームは止まっている）
+function drawMessage(text) {
+  const lines = text.split('\n');
+  const lh = 13;
+  const h = lines.length * lh + 16;
+  const x = 24;
+  const y = 40;
+  const w = SCREEN_W - 48;
+  g.fillStyle = '#1c1424';
+  g.fillRect(x, y, w, h);
+  g.strokeStyle = '#ff78c8';
+  g.lineWidth = 2;
+  g.strokeRect(x + 2, y + 2, w - 4, h - 4);
+  g.fillStyle = '#ffffff';
+  g.font = '10px system-ui, sans-serif';
+  g.textAlign = 'center';
+  lines.forEach((ln, i) => g.fillText(ln, SCREEN_W / 2, y + 16 + i * lh));
+  g.textAlign = 'left';
 }
 
 // 「コースクリア！」
@@ -139,6 +178,8 @@ function render() {
   view.drawWater(g, world.level, camX, camY, world.frame);
 
   drawPMeter();
+  if (world.message) drawMessage(world.message);
+  if (world.introTimer) drawIntro();
   if (clearTimer) drawClear();
   if (paused) {
     g.fillStyle = 'rgba(0,0,0,0.45)';

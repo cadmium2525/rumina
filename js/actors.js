@@ -181,7 +181,7 @@ class Throwable extends Sprite {
     // 敵との接触 (01A4BA)：空中にある間は敵を倒す (sub_1A642 → 1A685/1A64A)。
     // 床の上では倒さず、お互いに離れる向きへ向き直る (LABEL_41)
     for (const a of w.actors) {
-      if (a.type !== 'spiker' || a.dead || a.dying || !overlap(this.hitbox, a.hitbox)) continue;
+      if (!a.enemy || a.dead || a.dying || !overlap(this.hitbox, a.hitbox)) continue;
       if (!this.onFloor) {
         a.kill(this.xs < 0 ? -1 : 1);
         w.emit('kick');
@@ -227,7 +227,7 @@ class Throwable extends Sprite {
     }
     // 敵を倒す
     for (const a of w.actors) {
-      if (a.type === 'spiker' && !a.dead && !a.dying && overlap(this.hitbox, a.hitbox)) {
+      if (a.enemy && !a.dead && !a.dying && overlap(this.hitbox, a.hitbox)) {
         a.kill(this.xs < 0 ? -1 : 1);
         w.emit('kick');
       }
@@ -257,7 +257,7 @@ class Throwable extends Sprite {
     if ((p.in.hold1 & PAD.Y)) {
       this.followPlayer(p);
       // 持っている物が敵に触れると、敵も持っている物もやられる (01A4BA → sub_1A685)
-      const e = w.actors.find((a) => a.type === 'spiker' && !a.dead && !a.dying && overlap(this.hitbox, a.hitbox));
+      const e = w.actors.find((a) => a.enemy && !a.dead && !a.dying && overlap(this.hitbox, a.hitbox));
       if (e) this.clash(w, e);
       return;
     }
@@ -409,6 +409,7 @@ export class Spiker extends Sprite {
   constructor(x, y) {
     super(x, y);
     this.type = 'spiker';
+    this.enemy = true;
     this.dying = false;
     this.facing = 0;
     this.xs = -8;
@@ -563,4 +564,203 @@ export class Goal extends Sprite {
   }
 
   get hitbox() { return { x: this.x - 8, y: this.y, w: 16, h: 4 }; }
+}
+
+// ---- 電気街の敵（1-1 アキハバラ）。動きはオリジナル（ルミナ側の処理は SMW のまま） ----
+
+// 踏まれた時の共通処理。踏めたら true（呼び出し側で倒す・弱らせる）
+function stompCheck(w, a) {
+  const p = w.player;
+  const above = stompsFromAbove(p, a.hitbox, a.onFloor);
+  if (above) {
+    p.boost();
+    p.stompCount++;
+    w.star(p.xpos + 4, p.ypos + 0x1c);
+    w.emit('kick');
+    return true;
+  }
+  if (p.sliding) {
+    a.kill(a.playerIsLeft(p) ? 1 : -1);
+    w.star(a.x, a.y);
+    w.emit('kick');
+    return false;
+  }
+  if (p.hurt()) w.onPlayerHurt();
+  return false;
+}
+
+// やられて落ちていく（共通）
+function updateDying(a) {
+  a.moveY();
+  a.ys = Math.min(a.ys + SPR_GRAVITY, SPR_MAX_FALL);
+  a.moveX();
+  if (a.y > LEVEL_H + 64) a.dead = true;
+}
+
+class Enemy extends Sprite {
+  constructor(x, y) {
+    super(x, y);
+    this.enemy = true;
+    this.dying = false;
+  }
+
+  kill(dir) {
+    this.dying = true;
+    this.ys = -0x20;
+    this.xs = dir * 8;
+  }
+
+  touch(w) {
+    if (this.contactTimer || !touchesPlayer(w.player, this.hitbox)) return;
+    this.contactTimer = 8;
+    if (stompCheck(w, this)) this.stomped(w);
+  }
+
+  stomped(w) { this.kill(w.player.xpos < this.x ? 1 : -1); }
+}
+
+// ガチャカプセル：ルミナが近づくと、積まれた順に右へまっすぐ飛ぶ。上から踏める（踏み台にもなる）
+export class Capsule extends Enemy {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'capsule';
+    this.flying = false;
+    // 積まれている高さで飛び出す順番をずらす（下から順）
+    this.delay = (26 - Math.floor(y / 16)) * 10;
+  }
+
+  get hitbox() { return { x: this.x + 1, y: this.y + 2, w: 14, h: 12 }; }
+
+  update(w) {
+    if (this.contactTimer) this.contactTimer--;
+    if (this.dying) return updateDying(this);
+    if (!this.flying) {
+      if (Math.abs(w.player.xpos - this.x) < 112) {
+        if (this.delay-- <= 0) {
+          this.flying = true;
+          this.xs = 0x10;
+          w.emit('kick');
+        }
+      }
+    } else {
+      this.moveX();
+    }
+    this.touch(w);
+    if (this.offscreen(w, this.flying ? 48 : 192)) this.dead = true;
+  }
+}
+
+// 警備ロボ：その場でときどき跳ねる。3 回踏むと倒れる
+export class Robo extends Enemy {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'robo';
+    this.hp = 3;
+    this.timer = 40;
+    this.flash = 0;
+  }
+
+  // 体は 16x24（足元の 16x16 が地形との判定）
+  get hitbox() { return { x: this.x + 2, y: this.y - 6, w: 12, h: 22 }; }
+
+  update(w) {
+    if (this.contactTimer) this.contactTimer--;
+    if (this.flash) this.flash--;
+    if (this.dying) return updateDying(this);
+    this.facing = w.player.xpos > this.x ? 1 : 0;
+    this.xs = 0;
+    this.moveY();
+    this.gravity();
+    const f = this.collide(w.level);
+    if (f.floor) {
+      this.ys = 0;
+      if (--this.timer <= 0) {
+        this.ys = -0x38;
+        this.timer = 72;
+      }
+    }
+    if (f.ceiling) this.ys = 0;
+    this.touch(w);
+    if (this.offscreen(w, 192)) this.dead = true;
+  }
+
+  stomped(w) {
+    this.contactTimer = 16;
+    this.flash = 24;
+    if (--this.hp <= 0) this.kill(w.player.xpos < this.x ? 1 : -1);
+  }
+}
+
+// ドローン：左右に行き来しながら、ふわふわ上下する。踏むと落ちる
+export class Drone extends Enemy {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'drone';
+    this.x0 = x;
+    this.y0 = y;
+    this.t = 0;
+    this.facing = 0;
+  }
+
+  get hitbox() { return { x: this.x + 2, y: this.y + 4, w: 12, h: 10 }; }
+
+  update(w) {
+    if (this.contactTimer) this.contactTimer--;
+    if (this.dying) return updateDying(this);
+    this.t++;
+    this.xs = this.facing ? 8 : -8;
+    this.moveX();
+    if (this.x < this.x0 - 48) this.facing = 1;
+    if (this.x > this.x0 + 48) this.facing = 0;
+    this.y = this.y0 + Math.round(Math.sin(this.t / 16) * 6);
+    this.touch(w);
+    if (this.offscreen(w, 192)) this.dead = true;
+  }
+}
+
+// 電気スパーク：一定の間かくで真上に跳ね上がり、元の場所へ落ちてくる。
+// 触れるとダメージ。スピンジャンプで上から踏むと跳ね返れる（トゲムシと同じ）
+export class Spark extends Enemy {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'spark';
+    this.y0 = y;
+    this.timer = 30;
+    this.jumping = false;
+  }
+
+  get hitbox() { return { x: this.x + 3, y: this.y + 3, w: 10, h: 10 }; }
+
+  update(w) {
+    if (this.contactTimer) this.contactTimer--;
+    if (this.dying) return updateDying(this);
+    if (!this.jumping) {
+      if (--this.timer <= 0) {
+        this.jumping = true;
+        this.ys = -0x40;
+      }
+    } else {
+      this.moveY();
+      this.ys += 2;
+      if (this.ys > 0 && this.y >= this.y0) {
+        this.y = this.y0;
+        this.ys = 0;
+        this.jumping = false;
+        this.timer = 48;
+      }
+    }
+    if (!this.contactTimer && touchesPlayer(w.player, this.hitbox)) {
+      this.contactTimer = 8;
+      const p = w.player;
+      const above = stompsFromAbove(p, this.hitbox, false);
+      if (above && p.spin) {
+        p.boost();
+        w.star(p.xpos + 4, p.ypos + 0x1c);
+        w.emit('bounce');
+      } else if (p.hurt()) {
+        w.onPlayerHurt();
+      }
+    }
+    if (this.offscreen(w, 192)) this.dead = true;
+  }
 }

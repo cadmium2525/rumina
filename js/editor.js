@@ -3,6 +3,7 @@ import { Level, TILE, TILES_H, SLOPE_K, GROUND_Y, MIN_WIDTH, MAX_WIDTH } from '.
 import { LevelView } from './level_view.js';
 import { ActorSprites, RuminaSprite, gridToCanvas } from './sprites.js';
 import { LIGHT_ORB, PAL_OBJ } from './art.js';
+import { makeAkihabara } from './stages/akihabara.js';
 
 const EDIT_KEY = 'rumina.edit'; // 編集中のステージ
 const PLAY_KEY = 'rumina.play'; // テストプレイするステージ（main.js と同じ）
@@ -54,11 +55,24 @@ const PALETTE = [
     tile(T.CASTLE_BRICK, 'お城のレンガ'), tile(T.CASTLE_BLOCK, '鉄のブロック'),
     tile(T.CASTLE_LEDGE, '木の橋（上からだけ乗れる）'), tile(T.TORCH, 'たいまつ（飾り）'), tile(T.WINDOW, '窓（飾り）'),
   ]],
-  ['仕掛け', [tile(T.SPIKE, 'トゲ（触れるとダメージ）'), tile(T.LAVA, 'マグマ（落ちるとミス）')]],
+  ['電気街', [
+    tile(T.CONCRETE, 'コンクリート'), tile(T.RAIL, '高架の線路（上からだけ乗れる）'),
+    tile(T.DUCT_TL, 'ダクトの口（左）'), tile(T.DUCT_TR, 'ダクトの口（右）'),
+    tile(T.DUCT_L, 'ダクト（左）'), tile(T.DUCT_R, 'ダクト（右）'),
+    tile(T.MESSAGE, 'メッセージブロック（置くと文を入力）'), tile(T.NEON, 'ネオン看板（飾り）'),
+  ]],
+  ['仕掛け', [
+    tile(T.SPIKE, 'トゲ（触れるとダメージ）'), tile(T.SPIKE_DOWN, '下向きのトゲ（触れるとダメージ）'),
+    tile(T.LAVA, 'マグマ（落ちるとミス）'),
+  ]],
   ['敵・アイテム', [
     { kind: 'spawn', type: 'gift', name: 'ギフトボックス' },
     { kind: 'spawn', type: 'shell', name: '甲羅' },
     { kind: 'spawn', type: 'spiker', name: 'トゲムシ' },
+    { kind: 'spawn', type: 'capsule', name: 'ガチャカプセル（近づくと右へ飛ぶ・踏める）' },
+    { kind: 'spawn', type: 'robo', name: '警備ロボ（跳ねる・3 回踏むと倒れる）' },
+    { kind: 'spawn', type: 'drone', name: 'ドローン（左右にふわふわ・踏める）' },
+    { kind: 'spawn', type: 'spark', name: '電気スパーク（跳ね上がる・踏めない）' },
   ]],
   ['その他', [
     { kind: 'start', name: 'スタート位置' }, { kind: 'goal', name: 'ゴール（もう一度置くと移動）' },
@@ -142,6 +156,15 @@ function apply(tx, ty, b = brush) {
     level.set(tx, ty, b.t);
     if (b.t === T.QUESTION && b.item) level.contents.set(key(tx, ty), b.item);
     else level.contents.delete(key(tx, ty));
+    if (b.t === T.MESSAGE) {
+      // 文を入力する（\n の代わりに「/」で改行）
+      const old = (level.messages.get(key(tx, ty)) ?? '').replace(/\n/g, '/');
+      const text = prompt('メッセージの文（「/」で改行）', old || 'こんにちは！');
+      if (text !== null) level.messages.set(key(tx, ty), text.replace(/\//g, '\n'));
+      else if (!level.messages.has(key(tx, ty))) level.messages.set(key(tx, ty), '');
+    } else {
+      level.messages.delete(key(tx, ty));
+    }
   } else if (b.kind === 'spawn') {
     const i = spawnAt(tx, ty);
     if (i >= 0) level.spawns.splice(i, 1);
@@ -553,6 +576,13 @@ $('new').addEventListener('click', () => {
       start: { tx: 3, ty: GROUND_Y / 16 - 1 }, tiles: [0, 128 * (GROUND_Y / 16), T.GROUND, 128 * (TILES_H - GROUND_Y / 16)],
     });
   });
+  setScroll(0);
+  syncFields();
+});
+$('akiba').addEventListener('click', () => {
+  closeMenu();
+  if (!confirm('いまのステージを消して、1-1 アキハバラを読み込みますか？（元に戻すで戻せます）')) return;
+  edit(() => { level = new Level(makeAkihabara()); });
   setScroll(0);
   syncFields();
 });
