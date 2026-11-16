@@ -2,7 +2,7 @@
 // DOM に依存しない（描画は main.js / *_view.js）。
 import { Player } from './player.js';
 import { Level, Camera, GROUND_Y, SCREEN_W, LEVEL_H, TILE, CAM_Y } from './level.js';
-import { GiftBox, Shell, Spiker, LightOrb, Goal, Capsule, Robo, Drone, Spark, Bullet } from './actors.js';
+import { GiftBox, Shell, Spiker, LightOrb, Goal, Capsule, Robo, Drone, Spark, Bullet, Boss } from './actors.js';
 import { SHOOTER_TIME, SHOOTER_NEAR } from './smw_tables.js';
 import { BRICK_X, BRICK_Y, BRICK_XSPEED, BRICK_YSPEED } from './smw_tables.js';
 
@@ -34,6 +34,7 @@ export class World {
     this.goal = this.level.goal ? new Goal(this.level.goal.tx, this.level.goal.ty) : null;
     if (this.goal) this.actors.push(this.goal);
     this.cleared = false;
+    this.doorEntered = false; // ボス扉に入った（main.js が行き先のステージへ切り替える）
     this.message = null;  // 表示中のメッセージ（その間ゲームは止まる）
     this.messageTimer = 0;
     // 始まる時にステージ名を出す（その間ゲームは止まる）
@@ -116,6 +117,7 @@ export class World {
   }
 
   step(pad) {
+    if (this.doorEntered) return;
     if (this.introTimer) {
       this.introTimer--;
       return;
@@ -144,6 +146,10 @@ export class World {
     env.camX = this.camera.x;
     this.player.update(pad, env);
     if (this.player.locked && this.player.carrying) this.onPlayerHurt();
+    if (this.player.entering) {
+      this.doorEntered = true;
+      return;
+    }
 
     for (const s of this.player.smokeRequests) this.effects.push({ kind: 'smoke', x: s.x, y: s.y, t: 19 });
     this.player.smokeRequests.length = 0;
@@ -199,7 +205,7 @@ export class World {
       }
       if (p.state === 'used' && far) p.state = 'idle';
       if (p.state === 'idle' && near) {
-        const make = { gift: GiftBox, shell: Shell, spiker: Spiker, capsule: Capsule, robo: Robo, drone: Drone, spark: Spark }[p.type];
+        const make = { gift: GiftBox, shell: Shell, spiker: Spiker, capsule: Capsule, robo: Robo, drone: Drone, spark: Spark, boss: Boss }[p.type];
         const a = new make(p.x, p.y);
         if (a.type === 'spiker') a.facing = this.player.xpos > p.x ? 1 : 0;
         this.actors.push(a);

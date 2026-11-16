@@ -56,6 +56,7 @@ const PALETTE = [
   ['お城', [
     tile(T.CASTLE_BRICK, 'お城のレンガ'), tile(T.CASTLE_BLOCK, '鉄のブロック'),
     tile(T.CASTLE_LEDGE, '木の橋（上からだけ乗れる）'), tile(T.TORCH, 'たいまつ（飾り）'), tile(T.WINDOW, '窓（飾り）'),
+    tile(T.BOSS_DOOR_TOP, 'ボス扉（上）'), tile(T.BOSS_DOOR, 'ボス扉（下。置くと行き先を入力。↑で入る）'),
   ]],
   ['電気街', [
     tile(T.CONCRETE, 'コンクリート'), tile(T.RAIL, '高架の線路（上からだけ乗れる）'),
@@ -76,6 +77,7 @@ const PALETTE = [
     { kind: 'spawn', type: 'robo', name: '警備ロボ（跳ねる・3 回踏むと倒れる）' },
     { kind: 'spawn', type: 'drone', name: 'ドローン（左右にふわふわ・踏める）' },
     { kind: 'spawn', type: 'spark', name: '電気スパーク（跳ね上がる・踏めない）' },
+    { kind: 'spawn', type: 'boss', name: 'ボス：かげの王（3 回踏むと倒れてクリア）' },
   ]],
   ['その他', [
     { kind: 'start', name: 'スタート位置' }, { kind: 'goal', name: 'ゴール（もう一度置くと移動）' },
@@ -159,6 +161,11 @@ function apply(tx, ty, b = brush) {
     level.set(tx, ty, b.t);
     if (b.t === T.QUESTION && b.item) level.contents.set(key(tx, ty), b.item);
     else level.contents.delete(key(tx, ty));
+    if (b.t === T.BOSS_DOOR) {
+      // 行き先のステージ（例 1-5B）。空なら、入るとクリア
+      const to = prompt('ボス扉の行き先のステージ（例: 1-5B。空なら入るとクリア）', level.doorTo);
+      if (to !== null) level.doorTo = to.trim();
+    }
     if (b.t === T.MESSAGE) {
       // 文を入力する（\n の代わりに「/」で改行）
       const old = (level.messages.get(key(tx, ty)) ?? '').replace(/\n/g, '/');

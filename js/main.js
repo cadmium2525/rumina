@@ -43,13 +43,20 @@ let levelData = chooseLevel();
 let world = new World(levelData);
 let paused = false;
 let clearTimer = 0;
+let doorTimer = 0;
+const DOOR_TIME = 40;
+// 次のステージ（ボス部屋など、扉からしか入らない所は飛ばす。最後の次は最初）
+function nextStage(i) {
+  do { i = (i + 1) % STAGES.length; } while (STAGES[i].hidden);
+  return i;
+}
 const CLEAR_TIME = 240;
 let showDebug = false;
 
 // ゲーム内イベント → 効果音と触覚フィードバック
 const HAPTIC_OF = {
   break: 'medium', shatter: 'medium', bounce: 'medium', shrink: 'heavy', die: 'heavy', grow: 'medium',
-  goal: 'heavy', tape: 'medium', message: 'light', cannon: 'light', bump: 'light', grab: 'light', throw: 'light', kick: 'light', splash: 'light',
+  goal: 'heavy', tape: 'medium', bossdown: 'heavy', door: 'medium', message: 'light', cannon: 'light', bump: 'light', grab: 'light', throw: 'light', kick: 'light', splash: 'light',
 };
 
 function step() {
@@ -68,13 +75,29 @@ function step() {
   // ミスの演出が終わったらやり直し
   if (world.player.dead) reset();
   // コースクリア：文字を出してしばらくしたらやり直し
-  if (world.cleared && ++clearTimer > CLEAR_TIME) {
-    // 次のステージへ（custom・test は同じステージをもう一度）
-    if (stageIndex >= 0) {
-      stageIndex = (stageIndex + 1) % STAGES.length;
+  // ボス扉に入った：行き先のステージへ（無ければクリア扱い）。大きさは引き継ぐ
+  if (world.doorEntered && ++doorTimer > DOOR_TIME) {
+    const i = STAGES.findIndex((s) => s.id === world.level.doorTo);
+    const power = world.player.powerUp;
+    if (i >= 0) {
+      stageIndex = i;
+      levelData = STAGES[i].make();
+    } else if (stageIndex >= 0) {
+      stageIndex = nextStage(stageIndex);
       levelData = STAGES[stageIndex].make();
     }
     reset();
+    world.player.powerUp = power;
+  }
+  if (world.cleared && ++clearTimer > CLEAR_TIME) {
+    // 次のステージへ（custom・test は同じステージをもう一度）
+    const power = world.player.powerUp;
+    if (stageIndex >= 0) {
+      stageIndex = nextStage(stageIndex);
+      levelData = STAGES[stageIndex].make();
+    }
+    reset();
+    world.player.powerUp = power; // クリアした時の大きさは次のステージへ引き継ぐ
   }
 }
 
@@ -188,6 +211,11 @@ function render() {
   view.drawWater(g, world.level, camX, camY, world.frame);
 
   drawPMeter();
+  if (world.doorEntered) {
+    // 扉に入る：暗くなる
+    g.fillStyle = `rgba(0,0,0,${Math.min(1, doorTimer / 30)})`;
+    g.fillRect(0, 0, SCREEN_W, SCREEN_H);
+  }
   if (world.message) drawMessage(world.message);
   if (world.introTimer) drawIntro();
   if (clearTimer) drawClear();
@@ -270,6 +298,7 @@ function toggleDebug() {
 function reset() {
   world = new World(levelData);
   clearTimer = 0;
+  doorTimer = 0;
   paused = false;
 }
 

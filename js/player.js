@@ -11,7 +11,7 @@ import {
   GROW_IMAGES, GROW_TIME, DEATH_TIME, DEATH_YSPEED, DEATH_POSE,
   END_LEVEL_TIME, END_WALK_UNTIL, END_WALK_XSPEED, VICTORY_TIME, VICTORY_POSE,
 } from './smw_tables.js';
-import { TILE, isSlope, slopeK, isCeilingSlope, isClimbable, isHurtBlock } from './level.js';
+import { TILE, isSlope, slopeK, isCeilingSlope, isClimbable, isHurtBlock, isDoor } from './level.js';
 
 const u8 = (v) => v & 0xff;
 const s8 = (v) => ((v & 0xff) << 24) >> 24;
@@ -67,6 +67,7 @@ export class Player {
     this.victory = 0;       // 勝利ポーズ中 (flag_show_victory_pose_during_level_end)
     this.victoryTimer = 0;  // timer_show_victory_pose
     this.cleared = 0;       // 勝利ポーズが終わった（コースクリア）
+    this.entering = 0;      // 扉に入った
     this.ducking = 0;
     this.pmeter = 0;
     this.turning = 0;
@@ -140,7 +141,7 @@ export class Player {
     this.updatePosition();
     this.levelCollision();
     this.pitCheck();
-    if (this.state !== STATE.NORMAL) return;
+    if (this.state !== STATE.NORMAL || this.entering) return;
     // 00CD39
     this.turning = 0;
     const h = input.hold1;
@@ -370,6 +371,11 @@ export class Player {
       // 体の中心がブロックに埋まっている：左へ押し出す (00EB9B〜, E90A[v4])
       this.blocked |= ct === TILE.TURN ? 0x01 : 0x11;
     } else {
+      // 扉：地上で ↑ を押すと入る (LABEL_26：!temp8f && press1 & 8 → player_current_state = 13)
+      if (isDoor(ct) && !wasAir && (this.in.press1 & PAD.UP) && !this.endTimer) {
+        this.entering = 1;
+        this.env.emit('door');
+      }
       // 中心が水・ツタの中 (00F28C → 00F2C2(j, 1))
       this.touchTile(ct, 1);
       // 横：タイル内の位置に応じて片側だけ調べる (00EBF0 付近)

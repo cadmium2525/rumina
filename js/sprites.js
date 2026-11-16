@@ -4,6 +4,7 @@ import { POSE } from './player.js';
 import {
   PAL_OBJ, GIFT, SPIKER_A, SPIKER_B, PIECE_GOLD, PIECE_GIFT, STAR_A, STAR_B,
   SHELL_SIDE, SHELL_FRONT, SHELL_EDGE, LIGHT_ORB,
+  PAL_BOSS, BOSS_A, BOSS_B,
   PAL_AKIBA, CAPSULE, ROBO_A, ROBO_B, DRONE_A, DRONE_B, SPARK_A, SPARK_B, SHELLBULLET,
 } from './art.js';
 
@@ -151,6 +152,8 @@ export class ActorSprites {
     const both = (grid) => ({ right: gridToCanvas(grid, PAL_AKIBA, false), left: gridToCanvas(grid, PAL_AKIBA, true) });
     this.capsule = both(CAPSULE);
     this.bullet = both(SHELLBULLET);
+    this.boss = [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, PAL_BOSS));
+    this.bossBall = this.makeSpikeBall();
     this.robo = [both(ROBO_A), both(ROBO_B)];
     this.drone = [both(DRONE_A), both(DRONE_B)];
     this.spark = [both(SPARK_A), both(SPARK_B)];
@@ -211,6 +214,44 @@ export class ActorSprites {
     this.drawPost(g, goal.x - camX + 20, goal.bottom - camY, frame);
   }
 
+  // かげの王がトゲの球になった時の絵（32x32）
+  makeSpikeBall() {
+    const c = document.createElement('canvas');
+    c.width = 32;
+    c.height = 32;
+    const g = c.getContext('2d');
+    const px = (x, y, col) => { g.fillStyle = col; g.fillRect(x, y, 1, 1); };
+    for (let y = 0; y < 32; y++) {
+      for (let x = 0; x < 32; x++) {
+        const dx = x - 15.5, dy = y - 15.5;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        const a = Math.atan2(dy, dx);
+        const spike = 11 + 4.5 * Math.max(0, Math.cos(a * 8)); // 8 本のトゲ
+        if (d < 10) px(x, y, dx + dy < -6 ? PAL_BOSS.p : dx + dy > 8 ? PAL_BOSS.n : PAL_BOSS.P);
+        else if (d < 11) px(x, y, PAL_BOSS.K);
+        else if (d < spike - 1) px(x, y, PAL_BOSS.y);
+        else if (d < spike) px(x, y, PAL_BOSS.K);
+      }
+    }
+    return c;
+  }
+
+  // ボス（32x32。a.x, a.y は足元の 16x16 の左上）
+  drawBoss(g, a, frame, x, y) {
+    if (a.inv && (a.inv >> 1) & 1 && !a.dying) return;
+    if (a.dying && (a.timer >> 1) & 1) return;
+    if (a.state === 'shell' && !a.dying) {
+      // 転がる
+      g.save();
+      g.translate(x + 8, y);
+      g.rotate(((frame >> 1) & 7) * (Math.PI / 4) * (a.dir || 1));
+      g.drawImage(this.bossBall, -16, -16);
+      g.restore();
+      return;
+    }
+    g.drawImage(this.boss[a.onFloor ? (frame >> 3) & 1 : 1], x - 8, y - 16);
+  }
+
   // 上下逆さまに描く（やられた敵）
   drawFlipped(g, img, x, y) {
     g.save();
@@ -221,6 +262,26 @@ export class ActorSprites {
   }
 
   drawActor(g, a, frame, x, y) {
+    if (a.type === 'boss') return this.drawBoss(g, a, frame, x, y);
+    if (a.type === 'shadowball') {
+      // かげの玉：暗い玉と紫の光
+      g.save();
+      g.globalAlpha = 0.35;
+      g.fillStyle = '#b070ff';
+      g.beginPath();
+      g.arc(x + 8, y + 8, 8 + ((frame >> 2) & 1), 0, Math.PI * 2);
+      g.fill();
+      g.restore();
+      g.fillStyle = '#140c1c';
+      g.fillRect(x + 4, y + 3, 8, 10);
+      g.fillRect(x + 3, y + 4, 10, 8);
+      g.fillStyle = '#5430a0';
+      g.fillRect(x + 5, y + 4, 6, 8);
+      g.fillRect(x + 4, y + 5, 8, 6);
+      g.fillStyle = '#d0a8ff';
+      g.fillRect(x + 6, y + 5, 2, 2);
+      return;
+    }
     const ak = this.akibaImage(a, frame);
     if (ak) {
       const [img, dy] = ak;

@@ -35,7 +35,10 @@ export const TILE = {
   MESSAGE: 71,                                     // メッセージブロック（下から叩くと文字が出る）
   NEON: 72,                                        // ネオン看板（飾り）
   CANNON: 73,                                      // 砲台（砲弾を撃つ。SMW のキラー砲台）
+  // ボス扉（上と下の 2 マス）。前に立って ↑ で入る（SMW の扉と同じ）
+  BOSS_DOOR_TOP: 74, BOSS_DOOR: 75,
 };
+export const isDoor = (t) => t === TILE.BOSS_DOOR || t === TILE.BOSS_DOOR_TOP;
 export const TILE_COUNT = 96;
 // テーマ（背景と地面・坂の見た目）
 export const THEMES = ['grass', 'cave', 'ruins', 'castle', 'akiba'];
@@ -72,7 +75,7 @@ const BOUNCE_OFFSETS = [-4, -7, -8, -9, -8, -6, -3, 0];
 const SPIN_TIME = 256;
 
 // ステージに置ける敵・物
-export const SPAWN_TYPES = ['gift', 'shell', 'spiker', 'capsule', 'robo', 'drone', 'spark'];
+export const SPAWN_TYPES = ['gift', 'shell', 'spiker', 'capsule', 'robo', 'drone', 'spark', 'boss'];
 
 export const MIN_WIDTH = 16;
 export const MAX_WIDTH = 1024;
@@ -88,6 +91,7 @@ export class Level {
     this.goal = null; // ゴール {tx, ty}（ゲートの足元のタイル）
     this.messages = new Map(); // メッセージブロックの文 'tx,ty' → 文字列
     this.title = '';           // 始まる時に出す名前（例「1-1 アキハバラ」）
+    this.doorTo = '';          // ボス扉の行き先のステージ（空ならクリア）
     if (data) {
       this.load(data);
     } else {
@@ -128,7 +132,7 @@ export class Level {
       i += n;
     }
     return {
-      format: 'rumina-level', version: 1, title: this.title,
+      format: 'rumina-level', version: 1, title: this.title, doorTo: this.doorTo,
       width: this.width, height: TILES_H, theme: this.theme,
       start: { ...this.start },
       goal: this.goal ? { ...this.goal } : null,
@@ -163,6 +167,7 @@ export class Level {
     this.contents = new Map((d.items ?? []).map((e) => [`${e.tx},${e.ty}`, e.item]));
     this.messages = new Map((d.messages ?? []).map((e) => [`${e.tx},${e.ty}`, String(e.text ?? '')]));
     this.title = String(d.title ?? '');
+    this.doorTo = String(d.doorTo ?? '');
   }
 
   set(tx, ty, v) {

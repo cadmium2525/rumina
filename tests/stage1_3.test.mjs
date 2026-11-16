@@ -6,7 +6,7 @@ import { World } from '../js/world.js';
 import { STAGES } from '../js/stages/index.js';
 import { STAGE_1_3 } from '../js/stages/stage1_3.js';
 
-assert.deepEqual(STAGES.map((s) => s.id), ['1-1', '1-2', '1-3']);
+assert.deepEqual(STAGES.map((s) => s.id), ['1-1', '1-2', '1-3', '1-4', '1-5', '1-5B']);
 const lv = new Level(STAGE_1_3);
 assert.equal(lv.title, '1-3 ゆうやけの遺跡');
 assert.equal(lv.theme, 'ruins');

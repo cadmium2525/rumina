@@ -790,3 +790,125 @@ export class Spark extends Enemy {
     if (this.offscreen(w, 192)) this.dead = true;
   }
 }
+
+// ---- ボス：かげの王 ----
+// 歩いて近づき、ときどき跳ぶ・かげの玉を投げる。上から踏む（か物を当てる）とダメージで、
+// トゲの球になって部屋を転がる（その間は踏めない）。3 回で倒れ、コースクリアになる
+export class Boss extends Enemy {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'boss';
+    this.hp = 3;
+    this.state = 'walk';
+    this.timer = 90;
+    this.inv = 0;      // ダメージ後の無敵
+    this.moves = 0;
+    this.dir = -1;
+  }
+
+  // 絵は 32x32（地形との判定は足元の 16x16）
+  get hitbox() { return { x: this.x - 6, y: this.y - 12, w: 28, h: 28 }; }
+
+  update(w) {
+    this.w = w;
+    if (this.contactTimer) this.contactTimer--;
+    if (this.inv) this.inv--;
+    if (this.dying) {
+      // やられた：星をまき散らして消え、クリア
+      if ((this.timer & 7) === 0) w.star(this.x - 8 + ((this.timer * 7) % 28), this.y - 14 + ((this.timer * 5) % 26));
+      if (--this.timer <= 0) {
+        this.dead = true;
+        w.reachGoal();
+      }
+      return;
+    }
+    const p = w.player;
+    const rage = 3 - this.hp; // 弱るほど速い
+    if (this.state === 'shell') {
+      this.xs = this.dir * (0x1c + rage * 4);
+    } else {
+      this.facing = p.xpos > this.x ? 1 : 0;
+      if (this.onFloor) this.xs = (this.facing ? 1 : -1) * (5 + rage * 3);
+    }
+    this.moveY();
+    this.gravity();
+    this.moveX();
+    const f = this.collide(w.level);
+    if (f.floor) this.ys = 0;
+    if (f.ceiling) this.ys = 0;
+    if (this.state === 'shell') {
+      if (f.wall) {
+        this.dir = -this.dir;
+        w.emit('bump');
+      }
+      if (--this.timer <= 0) {
+        this.state = 'walk';
+        this.timer = 50;
+      }
+    } else if (f.floor && --this.timer <= 0) {
+      this.timer = 96 - rage * 16;
+      if (this.moves++ & 1) {
+        this.ys = -0x50; // 大ジャンプ
+        this.xs = (this.facing ? 1 : -1) * 0x10;
+      } else {
+        w.actors.push(new ShadowBall(this.x + (this.facing ? 14 : -14), this.y - 6, this.facing ? 1 : -1));
+        w.emit('throw');
+      }
+    }
+    if (!this.contactTimer && touchesPlayer(p, this.hitbox)) {
+      this.contactTimer = 8;
+      if (this.state !== 'shell' && !this.inv && stompsFromAbove(p, this.hitbox, this.onFloor)) {
+        p.boost();
+        w.star(p.xpos + 4, p.ypos + 0x1c);
+        this.damage();
+      } else if (!this.inv || this.state === 'shell') {
+        if (p.hurt()) w.onPlayerHurt();
+      }
+    }
+  }
+
+  // 踏まれた・物を当てられた
+  damage() {
+    if (this.inv || this.dying) return;
+    const w = this.w;
+    this.hp--;
+    this.inv = 40;
+    w.emit('kick');
+    if (this.hp <= 0) {
+      this.dying = true;
+      this.timer = 110;
+      this.xs = 0;
+      w.emit('bossdown');
+      return;
+    }
+    this.state = 'shell';
+    this.timer = 150;
+    this.dir = w.player.xpos > this.x ? 1 : -1;
+  }
+
+  kill() { if (this.w) this.damage(); }
+}
+
+// かげの玉：ボスが投げる。まっすぐ飛び、壁で消える。踏めない
+export class ShadowBall extends Sprite {
+  constructor(x, y, dir) {
+    super(x, y);
+    this.type = 'shadowball';
+    this.xs = dir * 0x18;
+  }
+
+  get hitbox() { return { x: this.x + 3, y: this.y + 3, w: 10, h: 10 }; }
+
+  update(w) {
+    if (this.contactTimer) this.contactTimer--;
+    this.moveX();
+    if (w.level.solidPx(this.x + 8, this.y + 8) || this.offscreen(w, 32)) {
+      this.dead = true;
+      return;
+    }
+    if (!this.contactTimer && touchesPlayer(w.player, this.hitbox)) {
+      this.contactTimer = 8;
+      if (w.player.hurt()) w.onPlayerHurt();
+    }
+  }
+}
