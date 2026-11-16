@@ -5,6 +5,7 @@ import { ActorSprites, RuminaSprite, gridToCanvas } from './sprites.js';
 import { LIGHT_ORB, PAL_OBJ } from './art.js';
 import { makeAkihabara } from './stages/akihabara.js';
 import { STAGE_1_2 } from './stages/stage1_2.js';
+import { STAGE_1_3 } from './stages/stage1_3.js';
 
 const EDIT_KEY = 'rumina.edit'; // 編集中のステージ
 const PLAY_KEY = 'rumina.play'; // テストプレイするステージ（main.js と同じ）
@@ -596,6 +597,13 @@ $('cave12').addEventListener('click', () => {
   closeMenu();
   if (!confirm('いまのステージを消して、1-2 ひかりの洞窟を読み込みますか？（元に戻すで戻せます）')) return;
   edit(() => { level = new Level(STAGE_1_2); });
+  setScroll(0);
+  syncFields();
+});
+$('ruins13').addEventListener('click', () => {
+  closeMenu();
+  if (!confirm('いまのステージを消して、1-3 ゆうやけの遺跡を読み込みますか？（元に戻すで戻せます）')) return;
+  edit(() => { level = new Level(STAGE_1_3); });
   setScroll(0);
   syncFields();
 });
