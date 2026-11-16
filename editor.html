@@ -33,6 +33,7 @@
       <option value="akiba">電気街</option>
     </select>
   </label>
+  <label class="field">名前 <input id="title" type="text" maxlength="24" placeholder="1-2 どうくつ" style="width:130px"></label>
   <label class="field">幅 <input id="width" type="number" min="16" max="1024" step="1"> マス</label>
   <span class="group">
     <button class="b" id="menu-btn" title="ファイル">☰</button>
@@ -41,6 +42,7 @@
   <div id="menu" hidden>
     <button id="new">新しいステージ（地面だけ）</button>
     <button id="akiba">1-1 アキハバラを読み込む</button>
+    <button id="cave12">1-2 ひかりの洞窟を読み込む</button>
     <button id="default">標準のテストステージを読み込む</button>
     <button id="export">ファイルに書き出す（.json）</button>
     <button id="import">ファイルから読み込む</button>

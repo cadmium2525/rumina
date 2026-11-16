@@ -4,6 +4,7 @@ import { LevelView } from './level_view.js';
 import { ActorSprites, RuminaSprite, gridToCanvas } from './sprites.js';
 import { LIGHT_ORB, PAL_OBJ } from './art.js';
 import { makeAkihabara } from './stages/akihabara.js';
+import { STAGE_1_2 } from './stages/stage1_2.js';
 
 const EDIT_KEY = 'rumina.edit'; // 編集中のステージ
 const PLAY_KEY = 'rumina.play'; // テストプレイするステージ（main.js と同じ）
@@ -539,6 +540,7 @@ function syncButtons() {
 function syncFields() {
   $('theme').value = level.theme;
   $('width').value = String(level.width);
+  $('title').value = level.title;
   buildPalette();
   setScroll(scrollX);
   showStatus();
@@ -547,6 +549,9 @@ function syncFields() {
 $('theme').addEventListener('change', (e) => {
   edit(() => { level.theme = e.target.value; });
   buildPalette();
+});
+$('title').addEventListener('change', (e) => {
+  edit(() => { level.title = e.target.value.trim(); });
 });
 $('width').addEventListener('change', (e) => {
   const n = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, Math.round(+e.target.value) || level.width));
@@ -584,6 +589,13 @@ $('akiba').addEventListener('click', () => {
   closeMenu();
   if (!confirm('いまのステージを消して、1-1 アキハバラを読み込みますか？（元に戻すで戻せます）')) return;
   edit(() => { level = new Level(makeAkihabara()); });
+  setScroll(0);
+  syncFields();
+});
+$('cave12').addEventListener('click', () => {
+  closeMenu();
+  if (!confirm('いまのステージを消して、1-2 ひかりの洞窟を読み込みますか？（元に戻すで戻せます）')) return;
+  edit(() => { level = new Level(STAGE_1_2); });
   setScroll(0);
   syncFields();
 });

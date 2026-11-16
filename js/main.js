@@ -1,6 +1,6 @@
 import { World } from './world.js';
 import { Level } from './level.js';
-import { makeAkihabara } from './stages/akihabara.js';
+import { STAGES } from './stages/index.js';
 import { RuminaSprite, SmokeSprites, ActorSprites } from './sprites.js';
 import { LevelView } from './level_view.js';
 import { SCREEN_W, SCREEN_H } from './level.js';
@@ -22,7 +22,7 @@ const smokeSprites = new SmokeSprites();
 const actorSprites = new ActorSprites();
 const debugEl = document.getElementById('debug');
 
-// 遊ぶステージ：ふだんは 1-1 アキハバラ。
+// 遊ぶステージ：ふだんは 1-1 から順に。?level=1-2 のように書くとそのステージから始まる。
 // ?level=custom ならエディタで作ったステージ（localStorage）、?level=test なら操作確認用のテストステージ
 export const PLAY_KEY = 'rumina.play';
 function chooseLevel() {
@@ -34,9 +34,12 @@ function chooseLevel() {
     } catch { /* 壊れていたら 1-1 */ }
   }
   if (which === 'test') return new Level().toData();
-  return makeAkihabara();
+  const i = STAGES.findIndex((s) => s.id === which);
+  stageIndex = i >= 0 ? i : 0;
+  return STAGES[stageIndex].make();
 }
-const levelData = chooseLevel();
+let stageIndex = -1; // STAGES の何番目か（custom・test は -1）
+let levelData = chooseLevel();
 let world = new World(levelData);
 let paused = false;
 let clearTimer = 0;
@@ -65,7 +68,14 @@ function step() {
   // ミスの演出が終わったらやり直し
   if (world.player.dead) reset();
   // コースクリア：文字を出してしばらくしたらやり直し
-  if (world.cleared && ++clearTimer > CLEAR_TIME) reset();
+  if (world.cleared && ++clearTimer > CLEAR_TIME) {
+    // 次のステージへ（custom・test は同じステージをもう一度）
+    if (stageIndex >= 0) {
+      stageIndex = (stageIndex + 1) % STAGES.length;
+      levelData = STAGES[stageIndex].make();
+    }
+    reset();
+  }
 }
 
 function drawPMeter() {

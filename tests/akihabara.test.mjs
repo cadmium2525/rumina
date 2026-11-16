@@ -193,6 +193,6 @@ const lv = new Level(data);
 {
   // 1-1 は起動時のステージ（?level=test で今までのテストステージ）
   const src = (await import('node:fs')).readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
-  assert.ok(src.includes('return makeAkihabara();'));
+  assert.ok(src.includes('STAGES[stageIndex].make()'));
 }
 console.log('akihabara: ok');
