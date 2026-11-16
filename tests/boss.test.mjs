@@ -8,7 +8,7 @@ import { STAGE_1_4 } from '../js/stages/stage1_4.js';
 import { STAGE_1_5 } from '../js/stages/stage1_5.js';
 import { STAGE_1_5B } from '../js/stages/stage1_5b.js';
 
-assert.deepEqual(STAGES.map((s) => s.id), ['1-1', '1-2', '1-3', '1-4', '1-5', '1-5B']);
+assert.deepEqual(STAGES.map((s) => s.id), ['1-1', '1-2', '1-3', '1-4', '1-5', '1-5B', '2-1', '2-2', '2-3', '2-4', '2-5', '2-5B']);
 assert.ok(STAGES[5].hidden);
 for (const [d, title, goal] of [[STAGE_1_4, '1-4 そよかぜの丘', true], [STAGE_1_5, '1-5 かげの城', false], [STAGE_1_5B, 'かげの王', false]]) {
   const lv = new Level(d);

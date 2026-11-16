@@ -41,6 +41,7 @@ body {
 }
 .field input { width: 70px; }
 #menu {
+  max-height: 70vh; overflow-y: auto;
   position: absolute; right: 8px; top: 100%; z-index: 10; display: flex; flex-direction: column;
   background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; padding: 6px; gap: 4px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);

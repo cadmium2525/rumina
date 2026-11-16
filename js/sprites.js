@@ -153,7 +153,11 @@ export class ActorSprites {
     this.capsule = both(CAPSULE);
     this.bullet = both(SHELLBULLET);
     this.boss = [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, PAL_BOSS));
-    this.bossBall = this.makeSpikeBall();
+    this.bossBall = this.makeSpikeBall(PAL_BOSS);
+    // ほのおの王：赤い色ちがい
+    const fire = { ...PAL_BOSS, p: '#ff8a50', P: '#d03a28', n: '#7a1420', c: '#fff0a0', r: '#ffd040' };
+    this.boss2 = [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, fire));
+    this.boss2Ball = this.makeSpikeBall(fire);
     this.robo = [both(ROBO_A), both(ROBO_B)];
     this.drone = [both(DRONE_A), both(DRONE_B)];
     this.spark = [both(SPARK_A), both(SPARK_B)];
@@ -215,7 +219,7 @@ export class ActorSprites {
   }
 
   // かげの王がトゲの球になった時の絵（32x32）
-  makeSpikeBall() {
+  makeSpikeBall(pal) {
     const c = document.createElement('canvas');
     c.width = 32;
     c.height = 32;
@@ -227,10 +231,10 @@ export class ActorSprites {
         const d = Math.sqrt(dx * dx + dy * dy);
         const a = Math.atan2(dy, dx);
         const spike = 11 + 4.5 * Math.max(0, Math.cos(a * 8)); // 8 本のトゲ
-        if (d < 10) px(x, y, dx + dy < -6 ? PAL_BOSS.p : dx + dy > 8 ? PAL_BOSS.n : PAL_BOSS.P);
-        else if (d < 11) px(x, y, PAL_BOSS.K);
-        else if (d < spike - 1) px(x, y, PAL_BOSS.y);
-        else if (d < spike) px(x, y, PAL_BOSS.K);
+        if (d < 10) px(x, y, dx + dy < -6 ? pal.p : dx + dy > 8 ? pal.n : pal.P);
+        else if (d < 11) px(x, y, pal.K);
+        else if (d < spike - 1) px(x, y, pal.y);
+        else if (d < spike) px(x, y, pal.K);
       }
     }
     return c;
@@ -245,11 +249,11 @@ export class ActorSprites {
       g.save();
       g.translate(x + 8, y);
       g.rotate(((frame >> 1) & 7) * (Math.PI / 4) * (a.dir || 1));
-      g.drawImage(this.bossBall, -16, -16);
+      g.drawImage(a.variant === 2 ? this.boss2Ball : this.bossBall, -16, -16);
       g.restore();
       return;
     }
-    g.drawImage(this.boss[a.onFloor ? (frame >> 3) & 1 : 1], x - 8, y - 16);
+    g.drawImage((a.variant === 2 ? this.boss2 : this.boss)[a.onFloor ? (frame >> 3) & 1 : 1], x - 8, y - 16);
   }
 
   // 上下逆さまに描く（やられた敵）
@@ -262,6 +266,7 @@ export class ActorSprites {
   }
 
   drawActor(g, a, frame, x, y) {
+    if (a.type === 'boss2') return this.drawBoss(g, { ...a, variant: 2, type: 'boss' }, frame, x, y); // エディタ用
     if (a.type === 'boss') return this.drawBoss(g, a, frame, x, y);
     if (a.type === 'shadowball') {
       // かげの玉：暗い玉と紫の光

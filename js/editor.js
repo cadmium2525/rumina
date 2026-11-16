@@ -6,6 +6,7 @@ import { LIGHT_ORB, PAL_OBJ } from './art.js';
 import { makeAkihabara } from './stages/akihabara.js';
 import { STAGE_1_2 } from './stages/stage1_2.js';
 import { STAGE_1_3 } from './stages/stage1_3.js';
+import { STAGES } from './stages/index.js';
 
 const EDIT_KEY = 'rumina.edit'; // 編集中のステージ
 const PLAY_KEY = 'rumina.play'; // テストプレイするステージ（main.js と同じ）
@@ -78,6 +79,7 @@ const PALETTE = [
     { kind: 'spawn', type: 'drone', name: 'ドローン（左右にふわふわ・踏める）' },
     { kind: 'spawn', type: 'spark', name: '電気スパーク（跳ね上がる・踏めない）' },
     { kind: 'spawn', type: 'boss', name: 'ボス：かげの王（3 回踏むと倒れてクリア）' },
+    { kind: 'spawn', type: 'boss2', name: 'ボス：ほのおの王（5 回踏むと倒れてクリア）' },
   ]],
   ['その他', [
     { kind: 'start', name: 'スタート位置' }, { kind: 'goal', name: 'ゴール（もう一度置くと移動）' },
@@ -614,6 +616,20 @@ $('ruins13').addEventListener('click', () => {
   setScroll(0);
   syncFields();
 });
+// ワールド 2 以降のステージは、並び (STAGES) からメニューに足す
+for (const st of STAGES) {
+  if (!/^[2-9]-/.test(st.id)) continue;
+  const b = document.createElement('button');
+  b.textContent = `${st.make().title || st.id} を読み込む`;
+  b.addEventListener('click', () => {
+    closeMenu();
+    if (!confirm(`いまのステージを消して、${st.id} を読み込みますか？（元に戻すで戻せます）`)) return;
+    edit(() => { level = new Level(st.make()); });
+    setScroll(0);
+    syncFields();
+  });
+  $('menu').insertBefore(b, $('default'));
+}
 $('default').addEventListener('click', () => {
   closeMenu();
   if (!confirm('いまのステージを消して、標準のテストステージを読み込みますか？（元に戻すで戻せます）')) return;
