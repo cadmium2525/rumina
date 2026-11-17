@@ -12,6 +12,12 @@ import { STAGE_2_3 } from './stage2_3.js';
 import { STAGE_2_4 } from './stage2_4.js';
 import { STAGE_2_5 } from './stage2_5.js';
 import { STAGE_2_5B } from './stage2_5b.js';
+import { STAGE_3_1 } from './stage3_1.js';
+import { STAGE_3_2 } from './stage3_2.js';
+import { STAGE_3_3 } from './stage3_3.js';
+import { STAGE_3_4 } from './stage3_4.js';
+import { STAGE_3_5 } from './stage3_5.js';
+import { STAGE_3_5B } from './stage3_5b.js';
 
 export const STAGES = [
   { id: '1-1', make: makeAkihabara },
@@ -26,4 +32,10 @@ export const STAGES = [
   { id: '2-4', make: () => STAGE_2_4 },
   { id: '2-5', make: () => STAGE_2_5 },
   { id: '2-5B', make: () => STAGE_2_5B, hidden: true },
+  { id: '3-1', make: () => STAGE_3_1 },
+  { id: '3-2', make: () => STAGE_3_2 },
+  { id: '3-3', make: () => STAGE_3_3 },
+  { id: '3-4', make: () => STAGE_3_4 },
+  { id: '3-5', make: () => STAGE_3_5 },
+  { id: '3-5B', make: () => STAGE_3_5B, hidden: true },
 ];

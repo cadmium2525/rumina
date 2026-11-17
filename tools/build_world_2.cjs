@@ -1,48 +1,7 @@
 // ワールド 2（2-1〜2-5 とボス部屋）をステージエディタを操作して作る: node tools/build_world_2.cjs
-const { build } = require('./editor_driver.cjs');
-const G = 24; // 地面の一番上の段
+const { build, G } = require('./editor_driver.cjs');
 
-// よく使う形。ed はエディタの操作（place / fill）
-const kit = (ed, width) => {
-  const { place, fill } = ed;
-  const k = {
-    ground: () => fill('地面', 0, G, width - 1, 26),
-    pit: (x0, x1) => fill('消しゴム', x0, G, x1, 26),
-    lava: (x0, x1) => fill('マグマ（落ちるとミス）', x0, G, x1, 26),
-    pool: (x0, x1) => fill('水', x0, G, x1, 25),
-    // 足場をまとめて置く：[x0, x1, y] の並び
-    ledges: async (name, list) => { for (const [x0, x1, y] of list) await fill(name, x0, y, x1, y); },
-    // 45°の丘：h 段登って、平らな頂上 top マス、下る
-    hill: async (x0, h, top) => {
-      for (let i = 0; i < h; i++) {
-        const xr = x0 + 2 * h + top - 1 - i;
-        await place('45°の上り坂', [[x0 + i, G - 1 - i]]);
-        await place('45°の下り坂', [[xr, G - 1 - i]]);
-        if (i) {
-          await fill('地面（上からだけ乗れる）', x0 + i, G - i, x0 + i, G - 1);
-          await fill('地面（上からだけ乗れる）', xr, G - i, xr, G - 1);
-        }
-      }
-      await fill('地面（上からだけ乗れる）', x0 + h, G - h, x0 + h + top - 1, G - 1);
-    },
-    // 右へ登る階段（h 段）
-    stairs: async (name, x0, h) => { for (let i = 0; i < h; i++) await fill(name, x0 + i, G - 1 - i, x0 + h - 1, G - 1 - i); },
-    // 砲台：土台 base 段の上に砲台 n 個
-    cannon: async (baseName, x, base, n) => {
-      if (base) await fill(baseName, x, G - base, x, G - 1);
-      await fill('砲台（約 3 秒ごとにルミナのいる側へ砲弾を撃つ）', x, G - base - n, x, G - base - 1);
-    },
-    message: async (x, y, text) => { ed.nextPrompt = text; await place('メッセージブロック（置くと文を入力）', [[x, y]]); },
-    light: (x, y) => place('？ブロック（光の玉）', [[x, y]]),
-    foes: (name, xs, y = G - 1) => place(name, xs.map((x) => (Array.isArray(x) ? x : [x, y]))),
-    start: (x = 3) => place('スタート位置', [[x, G - 1]]),
-    goal: (x) => place('ゴール（もう一度置くと移動）', [[x, G - 1]]),
-  };
-  return k;
-};
-const SPIKER = 'トゲムシ', CAPS = 'ガチャカプセル（転がる・踏める）', ROBO = '警備ロボ（跳ねる・3 回踏むと倒れる）';
-const DRONE = 'ドローン（左右にふわふわ・踏める）', SPARK = '電気スパーク（跳ね上がる・踏めない）';
-const SPIKE = 'トゲ（触れるとダメージ）', SPIKE_D = '下向きのトゲ（触れるとダメージ）', TURN = '金のブロック（クルクル）';
+const { kit, SPIKER, CAPS, ROBO, DRONE, SPARK, SPIKE, SPIKE_D, TURN } = require('./editor_driver.cjs');
 
 (async () => {
   // ================= 2-1 すなあらしの遺跡 =================

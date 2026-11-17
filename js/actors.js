@@ -825,7 +825,7 @@ export class Boss extends Enemy {
       return;
     }
     const p = w.player;
-    const rage = Math.min(4, this.maxHp - this.hp + (this.variant === 2 ? 1 : 0)); // 弱るほど速い
+    const rage = Math.min(4, this.maxHp - this.hp + this.variant - 1); // 弱るほど速い
     if (this.state === 'shell') {
       this.xs = this.dir * (0x1c + rage * 4);
     } else {
@@ -854,8 +854,10 @@ export class Boss extends Enemy {
         this.xs = (this.facing ? 1 : -1) * 0x10;
       } else {
         w.actors.push(new ShadowBall(this.x + (this.facing ? 14 : -14), this.y - 6, this.facing ? 1 : -1));
-        // ほのおの王は、高さの違う玉を 2 つ投げる
-        if (this.variant === 2) w.actors.push(new ShadowBall(this.x + (this.facing ? 14 : -14), this.y - 30, this.facing ? 1 : -1));
+        // ほのおの王は高さの違う玉を 2 つ、やみの王は 3 つ投げる
+        for (let i = 1; i < this.variant; i++) {
+          w.actors.push(new ShadowBall(this.x + (this.facing ? 14 : -14), this.y - 6 - 24 * i, this.facing ? 1 : -1));
+        }
         w.emit('throw');
       }
     }
@@ -900,6 +902,16 @@ export class Boss2 extends Boss {
     this.hp = 5;
     this.maxHp = 5;
     this.variant = 2;
+  }
+}
+
+// やみの王（ワールド 3 のボス）：7 回踏まないと倒れない。玉を 3 つ投げる
+export class Boss3 extends Boss {
+  constructor(x, y) {
+    super(x, y);
+    this.hp = 7;
+    this.maxHp = 7;
+    this.variant = 3;
   }
 }
 

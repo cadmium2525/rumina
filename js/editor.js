@@ -80,6 +80,7 @@ const PALETTE = [
     { kind: 'spawn', type: 'spark', name: '電気スパーク（跳ね上がる・踏めない）' },
     { kind: 'spawn', type: 'boss', name: 'ボス：かげの王（3 回踏むと倒れてクリア）' },
     { kind: 'spawn', type: 'boss2', name: 'ボス：ほのおの王（5 回踏むと倒れてクリア）' },
+    { kind: 'spawn', type: 'boss3', name: 'ボス：やみの王（7 回踏むと倒れてクリア）' },
   ]],
   ['その他', [
     { kind: 'start', name: 'スタート位置' }, { kind: 'goal', name: 'ゴール（もう一度置くと移動）' },

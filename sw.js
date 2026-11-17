@@ -1,5 +1,5 @@
 // オフライン用 Service Worker。ファイルを更新したら VERSION を上げる
-const VERSION = 'rumina-v20';
+const VERSION = 'rumina-v21';
 const ASSETS = [
   './', 'index.html', 'style.css', 'manifest.webmanifest',
   'js/main.js', 'js/player.js', 'js/smw_tables.js', 'js/sprites.js', 'js/rumina_frames.js',
@@ -7,6 +7,7 @@ const ASSETS = [
   'js/world.js', 'js/actors.js', 'js/art.js', 'js/haptics.js',
   'editor.html', 'editor.css', 'js/editor.js', 'js/stages/akihabara.js', 'js/stages/index.js', 'js/stages/stage1_2.js', 'js/stages/stage1_3.js', 'js/stages/stage1_4.js', 'js/stages/stage1_5.js', 'js/stages/stage1_5b.js',
   'js/stages/stage2_1.js', 'js/stages/stage2_2.js', 'js/stages/stage2_3.js', 'js/stages/stage2_4.js', 'js/stages/stage2_5.js', 'js/stages/stage2_5b.js',
+  'js/stages/stage3_1.js', 'js/stages/stage3_2.js', 'js/stages/stage3_3.js', 'js/stages/stage3_4.js', 'js/stages/stage3_5.js', 'js/stages/stage3_5b.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon-180.png',
 ];
 

@@ -158,6 +158,10 @@ export class ActorSprites {
     const fire = { ...PAL_BOSS, p: '#ff8a50', P: '#d03a28', n: '#7a1420', c: '#fff0a0', r: '#ffd040' };
     this.boss2 = [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, fire));
     this.boss2Ball = this.makeSpikeBall(fire);
+    // やみの王：黒と緑の色ちがい
+    const dark = { ...PAL_BOSS, p: '#5a6a78', P: '#28303c', n: '#10141c', c: '#80ff90', r: '#b060ff', y: '#d0d8e8', Y: '#8890a8' };
+    this.bossSets = [null, this.boss, this.boss2, [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, dark))];
+    this.bossBalls = [null, this.bossBall, this.boss2Ball, this.makeSpikeBall(dark)];
     this.robo = [both(ROBO_A), both(ROBO_B)];
     this.drone = [both(DRONE_A), both(DRONE_B)];
     this.spark = [both(SPARK_A), both(SPARK_B)];
@@ -249,11 +253,11 @@ export class ActorSprites {
       g.save();
       g.translate(x + 8, y);
       g.rotate(((frame >> 1) & 7) * (Math.PI / 4) * (a.dir || 1));
-      g.drawImage(a.variant === 2 ? this.boss2Ball : this.bossBall, -16, -16);
+      g.drawImage(this.bossBalls[a.variant || 1], -16, -16);
       g.restore();
       return;
     }
-    g.drawImage((a.variant === 2 ? this.boss2 : this.boss)[a.onFloor ? (frame >> 3) & 1 : 1], x - 8, y - 16);
+    g.drawImage(this.bossSets[a.variant || 1][a.onFloor ? (frame >> 3) & 1 : 1], x - 8, y - 16);
   }
 
   // 上下逆さまに描く（やられた敵）
@@ -266,6 +270,7 @@ export class ActorSprites {
   }
 
   drawActor(g, a, frame, x, y) {
+    if (a.type === 'boss3') return this.drawBoss(g, { ...a, variant: 3, type: 'boss' }, frame, x, y);
     if (a.type === 'boss2') return this.drawBoss(g, { ...a, variant: 2, type: 'boss' }, frame, x, y); // エディタ用
     if (a.type === 'boss') return this.drawBoss(g, a, frame, x, y);
     if (a.type === 'shadowball') {
