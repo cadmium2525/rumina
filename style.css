@@ -99,3 +99,8 @@ body.portrait .buttons { bottom: calc(36px + env(safe-area-inset-bottom)); }
 #help th, #help td { text-align: left; padding: 3px 6px; border-bottom: 1px solid #4a3a4c; }
 #help th { color: #c8c4dc; font-weight: 600; }
 #help .close { text-align: center; color: #c8c4dc; margin: 4px 0 0; }
+
+#btn-save-reset {
+  display: block; margin: 8px 0 0; padding: 6px 12px; border-radius: 8px;
+  border: 1px solid rgba(255, 120, 140, 0.7); background: rgba(160, 40, 70, 0.5); color: #fff; font: inherit;
+}

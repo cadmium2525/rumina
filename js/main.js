@@ -7,6 +7,8 @@ import { SCREEN_W, SCREEN_H } from './level.js';
 import { Input } from './input.js';
 import { sfx, unlockAudio } from './sfx.js';
 import { haptic, isHapticsOn, setHaptics } from './haptics.js';
+import { Overworld, loadSave, SAVE_KEY } from './overworld/overworld.js';
+import { OverworldView } from './overworld/overworld_view.js';
 
 const FRAME_MS = 1000 / 60.0988; // SNES (NTSC) のフレームレート
 
@@ -22,11 +24,13 @@ const smokeSprites = new SmokeSprites();
 const actorSprites = new ActorSprites();
 const debugEl = document.getElementById('debug');
 
-// 遊ぶステージ：ふだんは 1-1 から順に。?level=1-2 のように書くとそのステージから始まる。
+// ふだんは地図（オーバーワールド）から始まる。
+// ?level=1-2 のように書くと、地図を通さずにそのステージを直接遊ぶ（クリアすると次のステージへ）。
 // ?level=custom ならエディタで作ったステージ（localStorage）、?level=test なら操作確認用のテストステージ
 export const PLAY_KEY = 'rumina.play';
+const DIRECT = new URLSearchParams(location.search).get('level');
 function chooseLevel() {
-  const which = new URLSearchParams(location.search).get('level');
+  const which = DIRECT;
   if (which === 'custom') {
     try {
       const d = JSON.parse(localStorage.getItem(PLAY_KEY));
@@ -39,8 +43,55 @@ function chooseLevel() {
   return STAGES[stageIndex].make();
 }
 let stageIndex = -1; // STAGES の何番目か（custom・test は -1）
-let levelData = chooseLevel();
-let world = new World(levelData);
+let levelData = DIRECT ? chooseLevel() : null;
+let world = DIRECT ? new World(levelData) : null;
+
+// ---- 地図 ----
+const PLAYABLE = STAGES.filter((s) => !s.hidden).map((s) => s.id);
+const TITLES = Object.fromEntries(STAGES.filter((s) => !s.hidden).map((s) => [s.id, s.make().title || s.id]));
+const owView = new OverworldView(sprite);
+function makeOverworld() {
+  const o = new Overworld(loadSave(), PLAYABLE);
+  o.titles = TITLES;
+  return o;
+}
+let ow = DIRECT ? null : makeOverworld();
+let mode = DIRECT ? 'level' : 'map'; // 'map'（地図）または 'level'（ステージ）
+const fromMap = !DIRECT;
+
+// 暗転して切り替える：暗くなりきった所で fn を呼び、また明るくする
+const FADE = 18;
+let trans = null;
+function fadeTo(fn, { outOnly = false } = {}) {
+  trans = { t: outOnly ? FADE : 0, fn };
+}
+function stepTrans() {
+  trans.t++;
+  if (trans.t === FADE && trans.fn) {
+    trans.fn();
+    trans.fn = null;
+  }
+  if (trans.t >= FADE * 2) trans = null;
+}
+const fadeAlpha = () => (trans ? (trans.t < FADE ? trans.t / FADE : 2 - trans.t / FADE) : 0);
+
+function playStage(id) {
+  stageIndex = STAGES.findIndex((s) => s.id === id);
+  levelData = STAGES[stageIndex].make();
+  world = new World(levelData);
+  world.player.powerUp = ow ? ow.save.power : 0;
+  clearTimer = 0;
+  doorTimer = 0;
+  paused = false;
+  mode = 'level';
+  syncMapBtn();
+}
+
+function backToMap() {
+  mode = 'map';
+  paused = false;
+  syncMapBtn();
+}
 let paused = false;
 let clearTimer = 0;
 let doorTimer = 0;
@@ -59,8 +110,25 @@ const HAPTIC_OF = {
   goal: 'heavy', tape: 'medium', bossdown: 'heavy', door: 'medium', message: 'light', cannon: 'light', bump: 'light', grab: 'light', throw: 'light', kick: 'light', splash: 'light',
 };
 
+const MAP_SOUND = { bump: 'bump', enter: 'door', warp: 'door', reveal: 'reveal' };
+
 function step() {
   const pad = input.poll();
+  if (trans) {
+    stepTrans();
+    return;
+  }
+  if (mode === 'map') {
+    const r = ow.step(pad);
+    for (const ev of ow.events) {
+      if (MAP_SOUND[ev] && sfx[MAP_SOUND[ev]]) sfx[MAP_SOUND[ev]]();
+      if (ev === 'enter' || ev === 'warp') haptic('medium');
+    }
+    ow.events.length = 0;
+    if (r && r.play) fadeTo(() => playStage(r.play));
+    if (r && r.warp) fadeTo(() => ow.warpTo(r));
+    return;
+  }
   if (pad.startPressed) {
     paused = !paused;
     sfx.pause();
@@ -72,8 +140,16 @@ function step() {
     if (HAPTIC_OF[ev]) haptic(HAPTIC_OF[ev]);
   }
   world.events.length = 0;
-  // ミスの演出が終わったらやり直し
-  if (world.player.dead) reset();
+  // ミスの演出が終わったら：地図から来た時は地図へ戻る（小さくなる）。直接遊んでいる時はやり直し
+  if (world.player.dead) {
+    if (fromMap) {
+      ow.setPower(0);
+      fadeTo(backToMap);
+    } else {
+      reset();
+    }
+    return;
+  }
   // コースクリア：文字を出してしばらくしたらやり直し
   // ボス扉に入った：行き先のステージへ（無ければクリア扱い）。大きさは引き継ぐ
   if (world.doorEntered && ++doorTimer > DOOR_TIME) {
@@ -89,7 +165,17 @@ function step() {
     reset();
     world.player.powerUp = power;
   }
-  if (world.cleared && ++clearTimer > CLEAR_TIME) {
+  if (world.cleared && ++clearTimer > CLEAR_TIME && fromMap) {
+    // 地図へ戻って、クリアした点から道が開く（ボス部屋はお城のクリアになる）
+    const st = STAGES[stageIndex];
+    const power = world.player.powerUp;
+    fadeTo(() => {
+      backToMap();
+      ow.markCleared(st.credit || st.id, power);
+    });
+    return;
+  }
+  if (world.cleared && clearTimer > CLEAR_TIME) {
     // 次のステージへ（custom・test は同じステージをもう一度）
     const power = world.player.powerUp;
     if (stageIndex >= 0) {
@@ -172,6 +258,20 @@ function drawClear() {
 }
 
 function render() {
+  if (mode === 'map') {
+    owView.draw(g, ow, ow.frame, ow.save.power, fadeAlpha());
+    if (showDebug) debugEl.textContent = `map ${ow.mapId}  node ${ow.nodeKey}  ${ow.x},${ow.y}\ncleared ${ow.save.cleared.join(' ')}`;
+    return;
+  }
+  renderLevel();
+  const a = fadeAlpha();
+  if (a) {
+    g.fillStyle = `rgba(0,0,0,${a})`;
+    g.fillRect(0, 0, SCREEN_W, SCREEN_H);
+  }
+}
+
+function renderLevel() {
   const camX = Math.floor(world.camera.x);
   const camY = world.camera.y;
   const p = world.player;
@@ -296,7 +396,9 @@ function toggleDebug() {
   debugEl.hidden = !showDebug;
 }
 function reset() {
+  if (mode === 'map') return;
   world = new World(levelData);
+  if (fromMap) world.player.powerUp = ow.save.power;
   clearTimer = 0;
   doorTimer = 0;
   paused = false;
@@ -341,5 +443,32 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
 
+// 地図へ戻る（ステージの途中でも。クリアにはならない）
+const mapBtn = document.getElementById('btn-map');
+function syncMapBtn() {
+  mapBtn.hidden = !(fromMap && mode === 'level');
+}
+function exitToMap() {
+  if (!fromMap || mode !== 'level' || trans) return;
+  if (world.player.state === 0) ow.setPower(world.player.powerUp);
+  fadeTo(backToMap);
+}
+mapBtn.addEventListener('click', exitToMap);
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyM') exitToMap();
+});
+syncMapBtn();
+// セーブデータを消す（ヘルプの中のボタン）
+document.getElementById('btn-save-reset').addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (!confirm('進み具合（クリアしたステージ）をすべて消して、最初からにしますか？')) return;
+  try { localStorage.removeItem(SAVE_KEY); } catch { /* 消せなくても続ける */ }
+  if (fromMap) {
+    ow = makeOverworld();
+    backToMap();
+  }
+  document.getElementById('help').hidden = true;
+});
+
 // デバッグ・自動テスト用
-window.rumina = { get world() { return world; } };
+window.rumina = { get world() { return world; }, get ow() { return ow; }, get mode() { return mode; } };

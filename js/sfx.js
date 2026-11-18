@@ -72,6 +72,7 @@ export const sfx = {
     const notes = [523, 659, 784, 1047, 784, 1047, 1319];
     notes.forEach((f, i) => setTimeout(() => tone('square', f, f, i === notes.length - 1 ? 0.5 : 0.12, 0.07), i * 120));
   },
+  reveal() { tone('triangle', 900, 1100, 0.05, 0.05); },
   door() { tone('square', 200, 100, 0.3, 0.08); },
   bossdown() {
     noise(0.5, 0.14);

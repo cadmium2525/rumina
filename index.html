@@ -20,6 +20,7 @@
 </main>
 
 <div id="topbar">
+  <button id="btn-map" aria-label="地図へ戻る" hidden>🗺</button>
   <button id="btn-reset" aria-label="リセット">↺</button>
   <button id="btn-haptic" aria-label="振動" aria-pressed="true">振</button>
   <a id="btn-edit" class="tb" href="editor.html" aria-label="ステージエディタ">✎</a>
@@ -78,6 +79,9 @@
     最初に押したボタンは指を離すまで押されたままです。Y と B の間を押しても両方入ります。<br>
     ダッシュを続けると P メーターが溜まり、満タンで最高速＆ハイジャンプ。<br>
     R（画面右上の ↺）でリセット / F2 でデバッグ表示 / 「振」で振動の入切 / ✎ でステージエディタ。</p>
+    <p><b>地図</b>：十字キーで道を歩き、点の上で B（または A）を押すとステージに入ります。黄色の点はまだ、青い点はクリアしたステージ、灰色は準備中です。
+    クリアすると次の道が開き、ミスすると地図に戻ります。ステージの途中で地図へ戻るには 🗺（M キー）。進み具合はこの端末に自動で保存されます。
+    <button id="btn-save-reset" type="button">セーブデータを消す</button></p>
     <p class="close">タップで閉じる</p>
   </div>
 </div>
