@@ -1,0 +1,2 @@
+// かざんの王。ステージエディタで作ったデータ（tools/ の build_stage_*.cjs がエディタを操作して書き出す）。
+export const STAGE_7_5B = {"format":"rumina-level","version":1,"title":"かざんの王","doorTo":"","autoScroll":0,"width":16,"height":27,"theme":"castle","start":{"tx":2,"ty":23},"goal":null,"secretGoal":null,"tiles":[0,160,55,33,0,14,55,2,0,14,55,2,0,6,60,2,0,6,55,2,0,14,55,2,0,2,60,1,0,8,60,1,0,2,55,2,0,14,55,2,0,14,55,2,0,14,55,2,0,1,57,3,0,6,57,3,0,1,55,2,0,14,55,2,0,14,55,2,0,14,55,1,1,48],"spawns":[{"type":"boss7","tx":11,"ty":23}],"items":[],"messages":[]};

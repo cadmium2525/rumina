@@ -169,8 +169,11 @@ export class ActorSprites {
     this.bossSets = [null, this.boss, this.boss2, [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, dark)),
       [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, stone)), [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, sky)),
       [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, neon))];
+    // かざんの王：黒い岩肌に、溶岩のように光る橙と赤
+    const magma = { ...PAL_BOSS, p: '#5a3a34', P: '#2a1612', n: '#140806', c: '#ffb040', r: '#ff5a1c', y: '#ffd060', Y: '#e8781c' };
+    this.bossSets.push([BOSS_A, BOSS_B].map((f) => gridToCanvas(f, magma)));
     this.bossBalls = [null, this.bossBall, this.boss2Ball, this.makeSpikeBall(dark), this.makeSpikeBall(stone), this.makeSpikeBall(sky),
-      this.makeSpikeBall(neon)];
+      this.makeSpikeBall(neon), this.makeSpikeBall(magma)];
     this.robo = [both(ROBO_A), both(ROBO_B)];
     this.drone = [both(DRONE_A), both(DRONE_B)];
     this.spark = [both(SPARK_A), both(SPARK_B)];
@@ -300,7 +303,63 @@ export class ActorSprites {
   }
 
   drawActor(g, a, frame, x, y) {
+    if (a.type === 'boss7') return this.drawBoss(g, { ...a, variant: 7, type: 'boss' }, frame, x, y);
     if (a.type === 'boss6') return this.drawBoss(g, { ...a, variant: 6, type: 'boss' }, frame, x, y);
+    if (a.type === 'ember') {
+      // ひのこ：しずく形の炎に目。溶岩にひそんでいる間は見えない（エディタでは見える）
+      if (a.jumping === false) return;
+      const f = (frame >> 2) & 1;
+      const down = a.ys > 0;
+      g.save();
+      if (down) {
+        g.translate(0, 2 * y + 16);
+        g.scale(1, -1);
+      }
+      const rows = [[7, 2], [6, 4], [5, 6], [4, 8], [3, 10], [3, 10], [2, 12], [2, 12], [2, 12], [3, 10], [4, 8], [5, 6]];
+      rows.forEach(([ox, w0], i) => {
+        g.fillStyle = '#3a0a06';
+        g.fillRect(x + ox - 1, y + 2 + i, w0 + 2, 1);
+      });
+      rows.forEach(([ox, w0], i) => {
+        g.fillStyle = i < 3 ? '#ffe070' : i < 7 ? (f ? '#ff9a30' : '#ffb040') : '#e8481c';
+        g.fillRect(x + ox, y + 2 + i, w0, 1);
+      });
+      g.restore();
+      const ey = down ? y + 6 : y + 8;
+      g.fillStyle = '#ffffff';
+      g.fillRect(x + 5, ey, 2, 3);
+      g.fillRect(x + 9, ey, 2, 3);
+      g.fillStyle = '#1a0606';
+      g.fillRect(x + 6, ey + 1, 1, 2);
+      g.fillRect(x + 10, ey + 1, 1, 2);
+      return;
+    }
+    if (a.type === 'pillar') {
+      // 火柱：噴き上がる前は床が光って火の粉が上がる（y は床の 1 マス上）
+      const fy = y + 16;
+      if (!a.h) {
+        const k = (frame >> 1) & 3;
+        g.fillStyle = (frame >> 2) & 1 ? '#ff8a30' : '#e03c1c';
+        g.fillRect(x + 2, fy - 2, 12, 2);
+        g.fillStyle = '#ffd060';
+        g.fillRect(x + 4 + k * 2, fy - 4 - k * 2, 1, 1);
+        g.fillRect(x + 11 - k, fy - 6 - k, 1, 1);
+        return;
+      }
+      const top = fy - a.h;
+      for (let yy = top; yy < fy; yy++) {
+        const wob = Math.round(Math.sin((yy + frame * 3) / 4) * 1.5);
+        const wide = yy - top < 6 ? 6 + (yy - top) : 12;
+        const x0 = x + 8 - (wide >> 1) + wob;
+        g.fillStyle = '#c8281c';
+        g.fillRect(x0, yy, wide, 1);
+        g.fillStyle = '#ff8a30';
+        g.fillRect(x0 + 2, yy, Math.max(0, wide - 4), 1);
+        g.fillStyle = '#ffe070';
+        g.fillRect(x0 + 4, yy, Math.max(0, wide - 8), 1);
+      }
+      return;
+    }
     if (a.type === 'boss5') return this.drawBoss(g, { ...a, variant: 5, type: 'boss' }, frame, x, y);
     if (a.type === 'shock') {
       // 床を走る電撃：ジグザグの稲妻（水色と桃色が入れ替わる）

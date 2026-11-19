@@ -47,6 +47,9 @@ export const STATE = { NORMAL: 0, POWER_DOWN: 1, GROW: 2, DEATH: 9 };
 
 export const HURT_TIME = 0x7f;
 
+// kHandlePlayerLevelColl_DATA_00E90D（押し出す向き：右へ -1 / 左へ +1）の 1〜2 バイト目
+const EDGE_PUSH = [0xff, 0xff, 0x01, 0x00];
+
 export class Player {
   constructor(x, y) {
     this.xpos = x;          // 16bit 位置（当たり判定 16x32 の左上）
@@ -296,22 +299,64 @@ export class Player {
     const temp8d = this.onGround * 2; // 前のフレームに地面にいたか
     this.onGround = 0;
     this.tileCollision(temp8d);
-    // 画面端 (00E98C)
-    const rel = (this.xpos - this.env.camX) << 16 >> 16;
-    if (rel <= 232) {
-      if (rel - 8 < 0) this.blocked |= 2;
-    } else {
-      this.blocked |= 1;
+    this.screenEdge();
+    this.waterCheck();
+  }
+
+  // 画面端 (HandlePlayerLevelColl_00E98C)。ブロックに当たっていなければ、画面の左右の端で押し戻す。
+  // 強制スクロール中は、端に来たらスクロールの速さに合わせる (00E9C8)。
+  // 画面の左の外（16px 以内）に出てしまったらミス（壁と画面の端にはさまれた時など, 00EA08）
+  screenEdge() {
+    const camX = this.env.camX;
+    const onScreen = u16(this.xpos - camX); // player_on_screen_pos_x
+    if ((onScreen & 0xff) >= 0xf0) {
+      this.crushed();
+      return;
+    }
+    if (!(this.blocked & 3)) {
+      let j, sign;
+      if (s16(camX + 232 - this.xpos) > 0) {
+        j = 1;
+        sign = s16(this.xpos - 8 - camX) < 0;
+      } else {
+        j = 0;
+        sign = s16(camX + 232 - this.xpos) < 0;
+      }
+      if (sign) {
+        // 00E9C8
+        const auto = this.env.autoScroll;
+        if (auto) {
+          this.blocked |= 0x80;
+          const r0 = (auto.autoSpeed >> 4) & 0xff;
+          if (((EDGE_PUSH[j + 1] ^ u8(r0 - this.xspeed)) & 0x80) === 0) {
+            this.xspeed = r0;
+            this.subX = auto.autoSub & 0xff;
+          }
+        }
+        this.blocked |= j ? 2 : 1;
+      }
+    }
+    // 00E9FB：ブロックに上下からはさまれて埋まっていたらミス
+    if ((this.blocked & 0x1c) === 0x1c && !this.onSolidSprite) {
+      this.crushed();
+      return;
     }
     // 00EA0D：壁に埋まっていたら 1px ずつ押し戻す
     if (this.blocked & 3) {
       const push = (this.blocked & 2) ? 1 : -1;
       this.xpos = u16(this.xpos + push);
-      this.animSpeedIndex = 3;
-      // 壁に向かって進んでいれば速度を 0 に（E90D の符号と比較）
-      if (((push < 0 ? 0xff : 0x01) ^ this.xspeed) & 0x80) this.xspeed = 0;
+      if (!(this.blocked & 0x80)) {
+        this.animSpeedIndex = 3;
+        // 壁に向かって進んでいれば速度を 0 に（E90D の符号と比較）
+        if (((push < 0 ? 0xff : 0x01) ^ this.xspeed) & 0x80) this.xspeed = 0;
+      }
     }
-    this.waterCheck();
+  }
+
+  // 00EA08：はさまれた (DamagePlayer_KillAndDisableButtons)
+  crushed() {
+    this.xspeed = 0;
+    this.kill();
   }
 
   // 00EA34：水に入る・泳ぐ・水面から飛び出す

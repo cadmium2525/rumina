@@ -100,18 +100,18 @@ const finishReveal = (ow) => { for (let f = 0; f < 2000 && ow.reveal.length; f++
   console.log('warp: ok');
 }
 {
-  // まだ作っていないステージ（7-1）：歩いて行けるが、入れず、先の道も開かない
+  // まだ作っていないステージ（8-1）：歩いて行けるが、入れず、先の道も開かない
   const st = memory();
   const save = loadSave(st);
   save.cleared = playable.slice();
-  save.map = 'w7';
+  save.map = 'w8';
   save.node = 'P';
   const ow = new Overworld(save, playable, st);
   go(ow, R);
   assert.equal(ow.nodeKey, '1');
   assert.ok(ow.isSoon(ow.node()));
   assert.equal(ow.step(pad(0, B)), null);
-  go(ow, D);
+  go(ow, R);
   assert.equal(ow.nodeKey, '1', 'path beyond is closed');
   // ほしの道の門（8-5 のあと）は、まだ開かない
   const ow8 = new Overworld({ ...save, map: 'w8', node: 'P' }, playable, st);

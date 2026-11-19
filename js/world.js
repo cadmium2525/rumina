@@ -2,7 +2,7 @@
 // DOM に依存しない（描画は main.js / *_view.js）。
 import { Player } from './player.js';
 import { Level, Camera, GROUND_Y, SCREEN_W, LEVEL_H, TILE, CAM_Y, NOTE_YACCEL, NOTE_LAUNCH } from './level.js';
-import { GiftBox, Shell, Spiker, LightOrb, Goal, Capsule, Robo, Drone, Spark, Bullet, Boss, Boss2, Boss3, Boss4, Boss5, Boss6 } from './actors.js';
+import { GiftBox, Shell, Spiker, LightOrb, Goal, Capsule, Robo, Drone, Spark, Bullet, Boss, Boss2, Boss3, Boss4, Boss5, Boss6, Boss7, Ember } from './actors.js';
 import { SHOOTER_TIME, SHOOTER_NEAR } from './smw_tables.js';
 import { BRICK_X, BRICK_Y, BRICK_XSPEED, BRICK_YSPEED } from './smw_tables.js';
 
@@ -52,6 +52,7 @@ export class World {
       breakTile: (tx, ty) => this.breakTile(tx, ty),
       bumpTile: (tx, ty) => { this.hitTile(tx, ty); this.emit('bump'); },
       noteBlock: (tx, ty, dir) => this.level.noteHit(tx, ty, dir),
+      autoScroll: this.level.autoScroll ? this.camera : null, // 強制スクロールの速さ（画面端でルミナを合わせる）
     };
   }
 
@@ -157,7 +158,8 @@ export class World {
     }
 
     // SMW と同じく、カメラ → プレイヤー → スプライトの順
-    this.camera.update(this.player, this.level.widthPx);
+    if (this.level.autoScroll) this.camera.updateAuto(this.player, this.level.widthPx, this.level.autoScroll);
+    else this.camera.update(this.player, this.level.widthPx);
     env.camX = this.camera.x;
     this.player.update(pad, env);
     this.player.noteFlag = 0; // GameMode14_InLevel_00C47E の終わり
@@ -177,7 +179,8 @@ export class World {
     for (const a of this.actors) {
       a.update(this);
       // マグマに落ちたスプライトは消える
-      if (a.type !== 'goal' && a.state !== 'carried' && this.level.tileAtPx(a.x + 8, a.y + 12) === TILE.LAVA) a.dead = true;
+      // （ひのこは溶岩にひそむので消えない）
+      if (a.type !== 'goal' && a.type !== 'ember' && a.state !== 'carried' && this.level.tileAtPx(a.x + 8, a.y + 12) === TILE.LAVA) a.dead = true;
     }
     this.actors = this.actors.filter((a) => !a.dead);
 
@@ -254,7 +257,7 @@ export class World {
       }
       if (p.state === 'used' && far) p.state = 'idle';
       if (p.state === 'idle' && near) {
-        const make = { gift: GiftBox, shell: Shell, spiker: Spiker, capsule: Capsule, robo: Robo, drone: Drone, spark: Spark, boss: Boss, boss2: Boss2, boss3: Boss3, boss4: Boss4, boss5: Boss5, boss6: Boss6 }[p.type];
+        const make = { gift: GiftBox, shell: Shell, spiker: Spiker, capsule: Capsule, robo: Robo, drone: Drone, spark: Spark, boss: Boss, boss2: Boss2, boss3: Boss3, boss4: Boss4, boss5: Boss5, boss6: Boss6, boss7: Boss7, ember: Ember }[p.type];
         const a = new make(p.x, p.y);
         if (a.type === 'spiker') a.facing = this.player.xpos > p.x ? 1 : 0;
         this.actors.push(a);

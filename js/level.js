@@ -41,11 +41,13 @@ export const TILE = {
   CLOUD: 76,
   // ネオンの街（ワールド 6）：音符ブロック（乗ると跳ねる。SMW の Map16 0x115）と、上からだけ乗れるネオンの足場
   NOTE: 77, NEON_LEDGE: 78,
+  // 火山（ワールド 7）：火山岩（固い）と、上からだけ乗れる冷えた溶岩の足場
+  BASALT: 79, BASALT_LEDGE: 80,
 };
 export const isDoor = (t) => t === TILE.BOSS_DOOR || t === TILE.BOSS_DOOR_TOP;
 export const TILE_COUNT = 96;
 // テーマ（背景と地面・坂の見た目）
-export const THEMES = ['grass', 'cave', 'ruins', 'castle', 'akiba', 'sky', 'neon'];
+export const THEMES = ['grass', 'cave', 'ruins', 'castle', 'akiba', 'sky', 'neon', 'volcano'];
 // 使っている坂：ゆるい右上がり (k8,k9)・ゆるい右下がり (k10,k11)・45°右上がり (k12)・45°右下がり (k13)
 export const SLOPE_K = {
   UP_G1: 8, UP_G2: 9, DOWN_G1: 10, DOWN_G2: 11, UP_45: 12, DOWN_45: 13,
@@ -57,10 +59,10 @@ const SOLID = new Array(TILE_COUNT).fill(false);
 for (const t of [TILE.GROUND, TILE.STONE, TILE.TURN, TILE.QUESTION, TILE.USED, TILE.CAVE_ROCK,
   TILE.RUIN_BRICK, TILE.RUIN_BLOCK, TILE.CASTLE_BRICK, TILE.CASTLE_BLOCK, TILE.SPIKE,
   TILE.SPIKE_DOWN, TILE.DUCT_TL, TILE.DUCT_TR, TILE.DUCT_L, TILE.DUCT_R, TILE.CONCRETE, TILE.MESSAGE,
-  TILE.CANNON, TILE.NOTE]) SOLID[t] = true;
+  TILE.CANNON, TILE.NOTE, TILE.BASALT]) SOLID[t] = true;
 // 足元だけ固い（上から乗れる）
 const FLOOR = SOLID.slice();
-for (const t of [TILE.LEDGE, TILE.CAVE_LEDGE, TILE.RUIN_LEDGE, TILE.CASTLE_LEDGE, TILE.RAIL, TILE.CLOUD, TILE.NEON_LEDGE]) FLOOR[t] = true;
+for (const t of [TILE.LEDGE, TILE.CAVE_LEDGE, TILE.RUIN_LEDGE, TILE.CASTLE_LEDGE, TILE.RAIL, TILE.CLOUD, TILE.NEON_LEDGE, TILE.BASALT_LEDGE]) FLOOR[t] = true;
 // 触れるとダメージを受けるブロック
 export const isHurtBlock = (t) => t === TILE.SPIKE || t === TILE.SPIKE_DOWN;
 // 上からだけ乗れる足場か
@@ -84,8 +86,11 @@ export const NOTE_YACCEL = { 0: 0x10, 3: -0x10 };
 export const NOTE_TIME = 8;          // bounce_spr_timer
 export const NOTE_LAUNCH = -96;      // 跳ね終わりのルミナの速さ (player_yspeed = -96)
 
+// 強制スクロールの最高速 (kSpr0F3_RegularAutoScroll_MaxXSpeed)：遅い・速い
+export const AUTO_SCROLL_MAX = [0x80, 0x100];
+
 // ステージに置ける敵・物
-export const SPAWN_TYPES = ['gift', 'shell', 'spiker', 'capsule', 'robo', 'drone', 'spark', 'boss', 'boss2', 'boss3', 'boss4', 'boss5', 'boss6'];
+export const SPAWN_TYPES = ['gift', 'shell', 'spiker', 'capsule', 'robo', 'drone', 'spark', 'boss', 'boss2', 'boss3', 'boss4', 'boss5', 'boss6', 'boss7', 'ember'];
 
 export const MIN_WIDTH = 16;
 export const MAX_WIDTH = 1024;
@@ -104,6 +109,7 @@ export class Level {
     this.messages = new Map(); // メッセージブロックの文 'tx,ty' → 文字列
     this.title = '';           // 始まる時に出す名前（例「1-1 アキハバラ」）
     this.doorTo = '';          // ボス扉の行き先のステージ（空ならクリア）
+    this.autoScroll = 0;       // 強制スクロール：0 なし / 1 遅い / 2 速い（SMW の Spr0F3_RegularAutoScroll）
     if (data) {
       this.load(data);
     } else {
@@ -145,7 +151,7 @@ export class Level {
       i += n;
     }
     return {
-      format: 'rumina-level', version: 1, title: this.title, doorTo: this.doorTo,
+      format: 'rumina-level', version: 1, title: this.title, doorTo: this.doorTo, autoScroll: this.autoScroll,
       width: this.width, height: TILES_H, theme: this.theme,
       start: { ...this.start },
       goal: this.goal ? { ...this.goal } : null,
@@ -183,6 +189,7 @@ export class Level {
     this.messages = new Map((d.messages ?? []).map((e) => [`${e.tx},${e.ty}`, String(e.text ?? '')]));
     this.title = String(d.title ?? '');
     this.doorTo = String(d.doorTo ?? '');
+    this.autoScroll = [0, 1, 2].includes(d.autoScroll) ? d.autoScroll : 0;
   }
 
   set(tx, ty, v) {
@@ -366,7 +373,23 @@ export class Camera {
     this.y = CAM_Y;
     this.relPos = 0x80; // $142A
     this.scrollUp = 0;  // 着地したので上へスクロールしている ($13F1 flag_scroll_up_to_player)
+    this.autoSpeed = 0; // 強制スクロールの速さ（1/256 px/フレーム, l1_l2_scroll_spr_speed）
+    this.autoSub = 0;   // 強制スクロールの端数 (l1_l2_scroll_spr_sub_pos)
   }
+  // 強制スクロール (Layer1SpecialScrolling0C_RegularAutoScroll → UpdateLayerPositionWithScrollSprite)。
+  // 速さ（1/256 px）は毎フレーム 1 ずつ上がって、遅い 0x80（0.5px/フレーム）・速い 0x100（1px）で止まる。
+  // 最後の画面まで来たら止まる。縦は ふつうと同じ
+  updateAuto(player, widthPx, kind) {
+    const max = AUTO_SCROLL_MAX[kind - 1];
+    if (this.autoSpeed !== max) this.autoSpeed++;
+    const end = widthPx - SCREEN_W;
+    if (this.x >= end || player.endTimer) this.autoSpeed = 0;
+    const v = this.autoSpeed + (this.autoSub & 0xff);
+    this.autoSub = v & 0xffff;
+    this.x = Math.min(end, this.x + (v >> 8));
+    this.updateY(player);
+  }
+
   update(player, widthPx = LEVEL_W) {
     const scroll = [this.relPos - 12, this.relPos + 12];
     const r0 = player.xpos - this.x;

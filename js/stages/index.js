@@ -45,6 +45,13 @@ import { STAGE_6_4 } from './stage6_4.js';
 import { STAGE_6_5 } from './stage6_5.js';
 import { STAGE_6_5B } from './stage6_5b.js';
 import { STAGE_6_S } from './stage6_s.js';
+import { STAGE_7_1 } from './stage7_1.js';
+import { STAGE_7_2 } from './stage7_2.js';
+import { STAGE_7_3 } from './stage7_3.js';
+import { STAGE_7_4 } from './stage7_4.js';
+import { STAGE_7_5 } from './stage7_5.js';
+import { STAGE_7_5B } from './stage7_5b.js';
+import { STAGE_7_S } from './stage7_s.js';
 
 export const STAGES = [
   { id: '1-1', make: makeAkihabara },
@@ -90,4 +97,11 @@ export const STAGES = [
   { id: '6-5', make: () => STAGE_6_5 },
   { id: '6-5B', make: () => STAGE_6_5B, hidden: true, credit: '6-5' },
   { id: '6-S', make: () => STAGE_6_S }, // 隠しコース（地図の H）
+  { id: '7-1', make: () => STAGE_7_1 }, // 台地の下の洞窟にひみつのゴール
+  { id: '7-2', make: () => STAGE_7_2 }, // 強制スクロール（遅い）
+  { id: '7-3', make: () => STAGE_7_3 },
+  { id: '7-4', make: () => STAGE_7_4 }, // 強制スクロール（速い）
+  { id: '7-5', make: () => STAGE_7_5 },
+  { id: '7-5B', make: () => STAGE_7_5B, hidden: true, credit: '7-5' },
+  { id: '7-S', make: () => STAGE_7_S }, // 隠しコース（地図の H）。強制スクロール（速い）
 ];

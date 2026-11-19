@@ -553,7 +553,9 @@ export class Goal extends Sprite {
     this.ys = GOAL_TAPE_YSPEED[this.dir & 1];
     this.moveY();
     const p = w.player;
-    if (((p.xpos - (this.x - 8)) & 0xffff) < 0x10 && p.ypos <= this.base) {
+    // 柱の間を、テープの一番下より上・柱のてっぺんより下で通る（柱より上を通った時は反応しない。
+    // 洞窟の中のゴールの真上を歩いても反応しないように。SMW のゴールは上が空いた所にしか無いので上の判定は無い）
+    if (((p.xpos - (this.x - 8)) & 0xffff) < 0x10 && p.ypos <= this.base && p.ypos + 0x20 > this.bottom - GOAL_POST_H) {
       this.done = true;
       if (touchesPlayer(p, this.hitbox)) {
         this.cut = true;
@@ -807,6 +809,7 @@ export class Boss extends Enemy {
     this.baseRage = 0; // はじめの速さ（弱るほど速くなる）
     this.rocks = false; // 大ジャンプの着地で天井から落石を降らせる
     this.shock = false; // 大ジャンプの着地で床を走る電撃を左右に出す
+    this.pillars = false; // 大ジャンプの着地で床から火柱を噴き上げる
     this.state = 'walk';
     this.timer = 90;
     this.inv = 0;      // ダメージ後の無敵
@@ -849,6 +852,7 @@ export class Boss extends Enemy {
       this.jumped = false;
       if (this.rocks && !this.dying) this.dropRocks(w);
       if (this.shock && !this.dying && this.state !== 'shell') this.sendShock(w);
+      if (this.pillars && !this.dying && this.state !== 'shell') this.raisePillars(w);
     }
     if (this.state === 'shell') {
       if (f.wall) {
@@ -907,6 +911,18 @@ export class Boss extends Enemy {
 
   kill() { if (this.w) this.damage(); }
 
+  // 床から火柱を 3 本（ルミナの足もと・少し前・少し後ろ）。少しの間、床が光ってから噴き上がる
+  raisePillars(w) {
+    const lv = w.level;
+    const px = w.player.xpos + 8;
+    for (const dx of [-40, 0, 40]) {
+      const tx = Math.max(1, Math.min(lv.width - 2, Math.floor((px + dx) / 16)));
+      // ボスの足もとの高さの床から
+      w.actors.push(new FirePillar(tx * 16, this.y + 16));
+    }
+    w.emit('rumble');
+  }
+
   // 床を走る電撃を左右に 1 つずつ（弱るほど速い）
   sendShock(w) {
     const rage = Math.min(4, this.maxHp - this.hp + this.baseRage);
@@ -961,6 +977,88 @@ export class Shock extends Sprite {
         w.onPlayerHurt();
       }
     }
+  }
+}
+
+// かざんの王の火柱：床が光って煙が出たあと (warn)、火柱が噴き上がり (up)、しばらくして引っこむ。
+// 噴き上がっている間は触れるとダメージ。高さは 3 マス半（橋の上には届かない）
+export const PILLAR_H = 56;
+export class FirePillar extends Sprite {
+  constructor(x, floorY) {
+    super(x, floorY - 16);
+    this.type = 'pillar';
+    this.floorY = floorY;
+    this.t = 0;
+    this.h = 0;
+  }
+
+  get hitbox() { return { x: this.x + 3, y: this.floorY - this.h, w: 10, h: this.h }; }
+
+  update(w) {
+    if (this.contactTimer) this.contactTimer--;
+    this.t++;
+    const WARN = 44, UP = 8, STAY = 34;
+    if (this.t < WARN) this.h = 0;
+    else if (this.t < WARN + UP) this.h = Math.round((PILLAR_H * (this.t - WARN + 1)) / UP);
+    else if (this.t < WARN + UP + STAY) this.h = PILLAR_H;
+    else this.h = Math.max(0, this.h - 7);
+    if (this.t === WARN) w.emit('fire');
+    if (this.t > WARN + UP + STAY && !this.h) {
+      this.dead = true;
+      return;
+    }
+    if (this.h && !this.contactTimer && touchesPlayer(w.player, this.hitbox)) {
+      this.contactTimer = 8;
+      if (w.player.hurt()) w.onPlayerHurt();
+    }
+  }
+}
+
+// ひのこ：溶岩の中にひそんでいて、ときどき高く跳び出しては元の場所へ落ちてくる。
+// 跳んでいる間だけ見えて、触れるとダメージ。スピンジャンプで上から踏むと跳ね返れる
+export class Ember extends Enemy {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'ember';
+    this.y0 = y;
+    this.timer = 30 + ((x >> 4) % 4) * 22; // 並んでいる時は少しずつずらす
+    this.jumping = false;
+  }
+
+  get hitbox() { return { x: this.x + 3, y: this.y + 2, w: 10, h: 12 }; }
+
+  update(w) {
+    if (this.contactTimer) this.contactTimer--;
+    if (this.dying) return;
+    if (!this.jumping) {
+      if (--this.timer <= 0) {
+        this.jumping = true;
+        this.ys = -0x48;
+        if (this.x > w.camera.x - 16 && this.x < w.camera.x + 256) w.emit('ember');
+      }
+      return;
+    }
+    this.moveY();
+    this.ys += 2;
+    if (this.ys > 0 && this.y >= this.y0) {
+      this.y = this.y0;
+      this.ys = 0;
+      this.jumping = false;
+      this.timer = 96;
+      return;
+    }
+    if (!this.contactTimer && touchesPlayer(w.player, this.hitbox)) {
+      this.contactTimer = 8;
+      const p = w.player;
+      if (p.spin && stompsFromAbove(p, this.hitbox, false)) {
+        p.boost();
+        w.star(p.xpos + 4, p.ypos + 0x1c);
+        w.emit('bounce');
+      } else if (p.hurt()) {
+        w.onPlayerHurt();
+      }
+    }
+    if (this.offscreen(w, 192)) this.dead = true;
   }
 }
 
@@ -1030,6 +1128,20 @@ export class Boss4 extends Boss {
     this.balls = 2;
     this.baseRage = 2;
     this.rocks = true;
+  }
+}
+
+// かざんの王（ワールド 7 のボス）：8 回踏まないと倒れない。玉を 2 つ投げ、
+// 大ジャンプの着地でルミナのまわりの床から火柱を噴き上げる（床が光ったら離れるか、橋の上へ）
+export class Boss7 extends Boss {
+  constructor(x, y) {
+    super(x, y);
+    this.hp = 8;
+    this.maxHp = 8;
+    this.variant = 7;
+    this.balls = 2;
+    this.baseRage = 2;
+    this.pillars = true;
   }
 }
 

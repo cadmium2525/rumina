@@ -6,7 +6,7 @@ const path = require('path');
 const r = createRequire(process.env.PLAYWRIGHT_ROOT || '/opt/node22/lib/node_modules/');
 const { chromium } = r('playwright');
 
-// opt: {theme, title, width, file, name}。design(ed) の中で ed.place / ed.fill などを呼ぶ
+// opt: {theme, title, width, file, name, autoScroll}。design(ed) の中で ed.place / ed.fill などを呼ぶ
 exports.build = async (opt, design) => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
   const pg = await b.newPage({ viewport: { width: 1200, height: 800 } });
@@ -20,6 +20,8 @@ exports.build = async (opt, design) => {
   await pg.click('#menu-btn');
   await pg.click('#new');
   await pg.selectOption('#theme', opt.theme);
+  // 強制スクロール（opt.autoScroll：1 遅い / 2 速い）
+  if (opt.autoScroll) await pg.selectOption('#autoscroll', String(opt.autoScroll));
   await pg.fill('#title', opt.title);
   await pg.dispatchEvent('#title', 'change');
   await pg.fill('#width', String(opt.width));

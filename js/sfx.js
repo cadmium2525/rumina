@@ -103,6 +103,17 @@ export const sfx = {
     tone('triangle', 392, 784, 0.12, 0.1);
     setTimeout(() => tone('square', 784, 1046, 0.1, 0.05), 60);
   },
+  // かざんの王：床が揺れる・火柱が噴き上がる
+  rumble() {
+    noise(0.35, 0.08);
+    tone('sawtooth', 70, 50, 0.35, 0.06);
+  },
+  fire() {
+    noise(0.3, 0.12);
+    tone('sawtooth', 200, 600, 0.25, 0.05);
+  },
+  // ひのこが溶岩から跳び出す
+  ember() { tone('triangle', 300, 700, 0.1, 0.04); },
   // ネオンの王の電撃
   shock() {
     noise(0.18, 0.1);

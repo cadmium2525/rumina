@@ -10,7 +10,7 @@ const get = (id) => STAGES.find((s) => s.id === id);
 // ひみつのゴールがあるステージ = 地図で隠しコースの from になっているステージ
 const sources = Object.values(OW_MAPS).flatMap((m) => Object.values(m.nodes).filter((n) => n.hidden).map((n) => [m.nodes[n.from].stage, n.stage]));
 const ready = sources.filter(([src, h]) => get(src) && get(h));
-assert.deepEqual(ready, [['1-3', '1-S'], ['2-2', '2-S'], ['3-4', '3-S'], ['4-3', '4-S'], ['5-2', '5-S'], ['6-2', '6-S']]);
+assert.deepEqual(ready, [['1-3', '1-S'], ['2-2', '2-S'], ['3-4', '3-S'], ['4-3', '4-S'], ['5-2', '5-S'], ['6-2', '6-S'], ['7-1', '7-S']]);
 
 for (const [src, hid] of ready) {
   const main = new Level(get(src).make());
@@ -26,8 +26,10 @@ for (const [src, hid] of ready) {
   assert.ok(sg, `${src} has a secret goal`);
   // ゲートは足場の上に立っている
   assert.ok(lv.floorPx(sg.tx * 16 + 8, (sg.ty + 1) * 16 + 4), `${src} secret gate on a floor`);
-  // 寄り道にあり、ふつうのゴールとは離れている（上の方か、別の部屋）
-  assert.ok(lv !== main || sg.ty < main.goal.ty - 8, `${src} secret gate is off the main route`);
+  // 寄り道にあり、ふつうのゴールとは離れている（上の方か、別の部屋か、天井に囲まれた洞窟の中）
+  let roofed = false;
+  for (let y = sg.ty - 1; y >= Math.max(0, sg.ty - 13) && !roofed; y--) roofed = lv.solidPx(sg.tx * 16 + 8, y * 16 + 8);
+  assert.ok(lv !== main || sg.ty < main.goal.ty - 8 || roofed, `${src} secret gate is off the main route`);
   // 隠しコースはふつうのゴールで終わる
   const h = new Level(get(hid).make());
   assert.ok(h.goal && !h.secretGoal, `${hid} has a goal`);

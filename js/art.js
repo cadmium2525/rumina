@@ -1061,3 +1061,44 @@ export const NEON_LEDGE = [
   '................',
   '................',
 ];
+
+// ---- 火山（ワールド 7） ----
+export const PAL_VOLCANO = { K: '#160a0a', l: '#7a645a', D: '#4e3c36', d: '#33261f', o: '#ff8a30', r: '#e03c1c', y: '#ffe070' };
+// 火山岩（固いブロック）：石組みのすき間から溶岩の光がのぞく
+export const BASALT = [
+  'KKKKKKKKKKKKKKKK',
+  'KllDDDDDKlDDDDdK',
+  'KlDDDdDDKDDDDDdK',
+  'KDDDDDDoKDDdDDdK',
+  'KDDdDDorKDDDDDdK',
+  'KDDDDDDoKDDDDodK',
+  'KdddddddKddddrdK',
+  'KKKKKKKKKKKKKKKK',
+  'KDDDdKllDDDDDDDK',
+  'KDDDdKlDDDdDDDDK',
+  'KDoDdKDDDDDDDdDK',
+  'KorddKDDDDDDoDDK',
+  'KDoDdKDdDDDorDDK',
+  'KDDDdKDDDDDDoDDK',
+  'KddddKdddddddddK',
+  'KKKKKKKKKKKKKKKK',
+];
+// 冷えた溶岩の足場（上からだけ乗れる）：下側がまだ赤く光る
+export const BASALT_LEDGE = [
+  '.KKKKKKKKKKKKKK.',
+  'KlllDDDllDDDlllK',
+  'KDDDDDdDDDDdDDDK',
+  'KDdoDDDDDoDDDdDK',
+  'KdoyoddddoyodddK',
+  '.KrKKKKKKKrKKKK.',
+  '..K.......K.....',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+];

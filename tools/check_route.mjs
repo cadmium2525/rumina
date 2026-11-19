@@ -7,13 +7,15 @@
 // ルミナは大きい状態。フレーム単位の操作は使わないので、見つかる道は人の操作でも再現できる程度のもの。
 import { World } from '../js/world.js';
 import { STAGES } from '../js/stages/index.js';
-import { PAD } from '../js/player.js';
+import { PAD, PAD2 } from '../js/player.js';
 
 const MACRO = 8;
 const R = PAD.RIGHT, L = PAD.LEFT, B = PAD.B, Y = PAD.Y;
 const U = PAD.UP;
 // ↑ は扉に入る・ツタやハシゴにつかまる・水面から跳び出す（↑+B）のに使う
-const ACTIONS = [R, R | Y, R | B, R | Y | B, 0, B, L, L | B, L | Y, U, U | R, U | B, U | R | B];
+// A（スピンジャンプ）は 2 つ目のパッドなので 0x100 で表す
+const A = 0x100;
+const ACTIONS = [R, R | Y, R | B, R | Y | B, 0, B, L, L | B, L | Y, U, U | R, U | B, U | R | B, R | A, A];
 const BEAM = 400;
 const PER = 4;
 
@@ -73,6 +75,7 @@ function snap(w) {
     cam: prim(w.camera),
     frame: w.frame,
     prev1: w._prev1 ?? 0,
+    prev2: w._prev2 ?? 0,
     goal: prim(w.goal),
     sgoal: prim(w.secretGoal),
   };
@@ -91,6 +94,7 @@ function restore(w, s) {
   Object.assign(w.camera, s.cam);
   w.frame = s.frame;
   w._prev1 = s.prev1;
+  w._prev2 = s.prev2;
   if (w.goal) Object.assign(w.goal, s.goal);
   if (w.secretGoal) Object.assign(w.secretGoal, s.sgoal);
   if (w.enemies) {
@@ -113,9 +117,13 @@ function restore(w, s) {
 // 1 つの操作を MACRO フレーム続ける。結果：'dead' | 'goal' | 'secret' | 'door' | null
 function act(w, hold) {
   for (let f = 0; f < MACRO; f++) {
-    const prev = w._prev1 ?? 0;
-    w.step({ hold1: hold, press1: hold & ~prev, hold2: 0, press2: 0 });
-    w._prev1 = hold;
+    const h1 = hold & 0xff;
+    const h2 = hold & A ? PAD2.A : 0;
+    const p1 = w._prev1 ?? 0;
+    const p2 = w._prev2 ?? 0;
+    w.step({ hold1: h1, press1: h1 & ~p1, hold2: h2, press2: h2 & ~p2 });
+    w._prev1 = h1;
+    w._prev2 = h2;
     w.message = null;
     if (!w.enemies) w.actors = w.actors.filter((a) => a.type === 'goal');
     else w.actors = w.actors.filter((a) => a.type !== 'light'); // 光の玉は取らない（大きいまま）
@@ -157,7 +165,8 @@ export function findRoute(id, { want = 'goal', maxDepth = 900, beam = BEAM, log 
         // 目的に近いほど良い：ひみつのゴールは高さも見る
         const sg = w.level.secretGoal;
         let score = p.xpos - (p.powerUp ? 0 : 64); // 小さくなった候補は少し後回し
-        if (want === 'secret' && sg) score = p.xpos - Math.max(0, p.ypos + 32 - (sg.ty + 1) * 16) * 4;
+        // ひみつのゴールはゴールの場所までの近さ（横 + 縦×4）。上の屋上や下の洞窟など、横だけ見ても近づけない所にあるため
+        if (want === 'secret' && sg) score = -(Math.abs(p.xpos - sg.tx * 16) + 4 * Math.abs(p.ypos + 32 - (sg.ty + 1) * 16)) - (p.powerUp ? 0 : 64);
         next.set(key, { s: snap(w), path, score });
         best = Math.max(best, p.xpos);
       }

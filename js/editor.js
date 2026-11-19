@@ -60,6 +60,10 @@ const PALETTE = [
     tile(T.BOSS_DOOR_TOP, 'ボス扉（上）'), tile(T.BOSS_DOOR, 'ボス扉（下。置くと行き先を入力。↑で入る）'),
   ]],
   ['空', [tile(T.CLOUD, '雲（上からだけ乗れる）')]],
+  ['火山', [
+    tile(T.BASALT, '火山岩'),
+    tile(T.BASALT_LEDGE, '冷えた溶岩の足場（上からだけ乗れる）'),
+  ]],
   ['ネオン', [
     tile(T.NOTE, '音符ブロック（乗ると跳ねる。B を押していると高く跳ぶ）'),
     tile(T.NEON_LEDGE, 'ネオンの足場（上からだけ乗れる）'),
@@ -83,12 +87,14 @@ const PALETTE = [
     { kind: 'spawn', type: 'robo', name: '警備ロボ（跳ねる・3 回踏むと倒れる）' },
     { kind: 'spawn', type: 'drone', name: 'ドローン（左右にふわふわ・踏める）' },
     { kind: 'spawn', type: 'spark', name: '電気スパーク（跳ね上がる・踏めない）' },
+    { kind: 'spawn', type: 'ember', name: 'ひのこ（溶岩の中に置く。跳び出す・踏めない）' },
     { kind: 'spawn', type: 'boss', name: 'ボス：かげの王（3 回踏むと倒れてクリア）' },
     { kind: 'spawn', type: 'boss2', name: 'ボス：ほのおの王（5 回踏むと倒れてクリア）' },
     { kind: 'spawn', type: 'boss3', name: 'ボス：やみの王（7 回踏むと倒れてクリア）' },
     { kind: 'spawn', type: 'boss4', name: 'ボス：いわの王（6 回踏むと倒れてクリア。落石を降らせる）' },
     { kind: 'spawn', type: 'boss5', name: 'ボス：そらの王（6 回踏むと倒れてクリア。空を飛ぶ）' },
     { kind: 'spawn', type: 'boss6', name: 'ボス：ネオンの王（7 回踏むと倒れてクリア。床を走る電撃）' },
+    { kind: 'spawn', type: 'boss7', name: 'ボス：かざんの王（8 回踏むと倒れてクリア。床から火柱）' },
   ]],
   ['その他', [
     { kind: 'start', name: 'スタート位置' }, { kind: 'goal', name: 'ゴール（もう一度置くと移動）' },
@@ -572,6 +578,7 @@ function syncFields() {
   $('theme').value = level.theme;
   $('width').value = String(level.width);
   $('title').value = level.title;
+  $('autoscroll').value = String(level.autoScroll);
   if (paletteTheme !== level.theme) {
     buildPalette();
     paletteTheme = level.theme;
@@ -584,6 +591,9 @@ $('theme').addEventListener('change', (e) => {
   edit(() => { level.theme = e.target.value; });
   buildPalette();
   paletteTheme = level.theme;
+});
+$('autoscroll').addEventListener('change', (e) => {
+  edit(() => { level.autoScroll = +e.target.value; });
 });
 $('title').addEventListener('change', (e) => {
   edit(() => { level.title = e.target.value.trim(); });

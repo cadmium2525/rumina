@@ -81,6 +81,8 @@ const THEME_PAL = {
   sky: { ...TILE_PAL, K: '#5a70a8', l: '#ffffff', G: '#f4f8ff', g: '#c4d4f0', D: '#e6eefc', d: '#d0dcf4', e: '#ffffff' },
   // ネオンの街：桃色のネオンの縁がついた、夜のアスファルト
   neon: { ...TILE_PAL, K: '#0c0814', l: '#ff78c8', G: '#4a3a70', g: '#352a58', D: '#241c3c', d: '#1a142c', e: '#2e2650' },
+  // 火山：黒っぽい岩の地面。表面のふちが溶岩の色に光る
+  volcano: { ...TILE_PAL, K: '#160a0a', l: '#ff8a30', G: '#5a4038', g: '#3e2a26', D: '#2e201e', d: '#221614', e: '#4a2e24' },
 };
 // テーマごとの背景
 const SKY = {
@@ -91,6 +93,7 @@ const SKY = {
   akiba: ['#2a1c58', '#d86aa0'],
   sky: ['#3a80e8', '#bfe0ff'],
   neon: ['#05031a', '#2c1258'],
+  volcano: ['#1a0610', '#8a2a10'],
 };
 // 1 枚絵のタイル（テーマによらない）
 const STAGE_TILES = {
@@ -170,6 +173,8 @@ export class LevelView {
     for (const [t, name] of Object.entries(STAGE_TILES)) this.stage[t] = gridToCanvas(ART[name], PAL_STAGE);
     for (const [t, name] of Object.entries(AKIBA_TILES)) this.stage[t] = gridToCanvas(ART[name], ART.PAL_AKIBA);
     this.stage[TILE.CLOUD] = gridToCanvas(ART.CLOUD, ART.PAL_SKY);
+    this.stage[TILE.BASALT] = gridToCanvas(ART.BASALT, ART.PAL_VOLCANO);
+    this.stage[TILE.BASALT_LEDGE] = gridToCanvas(ART.BASALT_LEDGE, ART.PAL_VOLCANO);
     this.torch = [ART.TORCH_A, ART.TORCH_B].map((f) => gridToCanvas(f, PAL_STAGE));
     this.lavaTop = gridToCanvas(ART.LAVA_TOP, PAL_STAGE);
     this.lava = gridToCanvas(ART.LAVA, PAL_STAGE);
@@ -379,6 +384,49 @@ export class LevelView {
       for (let px = 10; px < 512; px += 64) g.fillRect(px, 176, 10, 48);
       g.fillStyle = '#5a4a8a';
       g.fillRect(0, 166, 512, 2);
+    } else if (name === 'volcano') {
+      // 噴煙を上げる大きな火山と、山はだを流れる溶岩、遠くの山並み、舞い上がる火の粉
+      for (let x = 0; x < 512; x++) {
+        const t = (x / 512) * Math.PI * 2;
+        const y = 150 + Math.sin(t * 3) * 10 + Math.sin(t * 7) * 5;
+        g.fillStyle = '#3a1418';
+        g.fillRect(x, y, 1, 224 - y);
+      }
+      // 火山（台形の山、頂上がくぼんだ火口）
+      const cx = 300;
+      for (let x = cx - 170; x < cx + 170; x++) {
+        const d = Math.abs(x - cx);
+        let y = d < 34 ? 64 + (34 - d) * 0.15 : 64 + (d - 34) * 0.62;
+        g.fillStyle = '#2a0e10';
+        g.fillRect(x, y, 1, 224 - y);
+      }
+      // 火口の光と、山はだを流れる溶岩
+      g.fillStyle = '#ff6a20';
+      g.fillRect(cx - 30, 62, 60, 3);
+      g.fillStyle = '#ffb040';
+      g.fillRect(cx - 22, 63, 44, 1);
+      for (const [x0, dir] of [[cx - 12, -1], [cx + 8, 1], [cx + 20, 1]]) {
+        let x = x0;
+        for (let y = 66; y < 200; y += 2) {
+          x += dir * (0.9 + Math.sin(y / 9) * 0.6);
+          g.fillStyle = y < 140 ? '#ff7a28' : '#c83c18';
+          g.fillRect(Math.round(x), y, 2, 2);
+        }
+      }
+      // 噴煙
+      for (let i = 0; i < 9; i++) {
+        g.fillStyle = `rgba(60,40,48,${0.75 - i * 0.06})`;
+        g.beginPath();
+        g.arc(cx - 6 + i * 9 + Math.sin(i) * 8, 50 - i * 6, 14 + i * 3, 0, Math.PI * 2);
+        g.fill();
+      }
+      // 火の粉
+      for (let i = 0; i < 50; i++) {
+        g.fillStyle = rnd() < 0.5 ? '#ffb040' : '#ff6a20';
+        g.globalAlpha = 0.5 + rnd() * 0.5;
+        g.fillRect(Math.floor(rnd() * 512), Math.floor(rnd() * 200), 1, 1);
+      }
+      g.globalAlpha = 1;
     } else if (name === 'neon') {
       // 夜のネオン街：星と月、遠くのビル（暗い影）と、手前のビルの光る窓・ネオンの看板
       for (let i = 0; i < 70; i++) {
