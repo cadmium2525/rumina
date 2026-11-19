@@ -85,6 +85,8 @@ const THEME_PAL = {
   volcano: { ...TILE_PAL, K: '#160a0a', l: '#ff8a30', G: '#5a4038', g: '#3e2a26', D: '#2e201e', d: '#221614', e: '#4a2e24' },
   // やみの国：むらさきに光るふちの、黒い石の地面
   dark: { ...TILE_PAL, K: '#08050e', l: '#9a7ad8', G: '#3a2c50', g: '#2a2040', D: '#1e1830', d: '#151020', e: '#2c2444' },
+  // 宇宙：光る水色のふちの、星の結晶の地面
+  space: { ...TILE_PAL, K: '#06061a', l: '#a0e8ff', G: '#3a4a9a', g: '#2a3478', D: '#1a2052', d: '#12183a', e: '#2a3a80' },
 };
 // テーマごとの背景
 const SKY = {
@@ -97,6 +99,7 @@ const SKY = {
   neon: ['#05031a', '#2c1258'],
   volcano: ['#1a0610', '#8a2a10'],
   dark: ['#05030c', '#24103a'],
+  space: ['#020210', '#141050'],
 };
 // 1 枚絵のタイル（テーマによらない）
 const STAGE_TILES = {
@@ -180,6 +183,8 @@ export class LevelView {
     this.stage[TILE.BASALT_LEDGE] = gridToCanvas(ART.BASALT_LEDGE, ART.PAL_VOLCANO);
     this.stage[TILE.SHADOW_BLOCK] = gridToCanvas(ART.SHADOW_BLOCK, ART.PAL_DARK);
     this.stage[TILE.SHADOW_LEDGE] = gridToCanvas(ART.SHADOW_LEDGE, ART.PAL_DARK);
+    this.stage[TILE.STAR_BLOCK] = gridToCanvas(ART.STAR_BLOCK, ART.PAL_SPACE);
+    this.stage[TILE.STAR_LEDGE] = gridToCanvas(ART.STAR_LEDGE, ART.PAL_SPACE);
     this.torch = [ART.TORCH_A, ART.TORCH_B].map((f) => gridToCanvas(f, PAL_STAGE));
     this.lavaTop = gridToCanvas(ART.LAVA_TOP, PAL_STAGE);
     this.lava = gridToCanvas(ART.LAVA, PAL_STAGE);
@@ -389,6 +394,50 @@ export class LevelView {
       for (let px = 10; px < 512; px += 64) g.fillRect(px, 176, 10, 48);
       g.fillStyle = '#5a4a8a';
       g.fillRect(0, 166, 512, 2);
+    } else if (name === 'space') {
+      // 宇宙：たくさんの星、むらさきと青の星雲、輪のある惑星、流れ星
+      for (let i = 0; i < 6; i++) {
+        const cx = Math.floor(rnd() * 512);
+        const cy = 30 + Math.floor(rnd() * 150);
+        const grad = g.createRadialGradient(cx, cy, 2, cx, cy, 50 + rnd() * 40);
+        grad.addColorStop(0, rnd() < 0.5 ? 'rgba(150,90,255,0.35)' : 'rgba(80,160,255,0.3)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = grad;
+        g.fillRect(cx - 100, cy - 100, 200, 200);
+      }
+      for (let i = 0; i < 160; i++) {
+        const big = rnd() < 0.08;
+        g.fillStyle = ['#ffffff', '#c8e0ff', '#ffe8c0', '#d0c0ff'][Math.floor(rnd() * 4)];
+        g.globalAlpha = 0.4 + rnd() * 0.6;
+        const x = Math.floor(rnd() * 512);
+        const y = Math.floor(rnd() * 224);
+        g.fillRect(x, y, big ? 2 : 1, big ? 2 : 1);
+        if (big) { g.fillRect(x - 1, y, 4, 1); g.fillRect(x, y - 1, 1, 4); }
+      }
+      g.globalAlpha = 1;
+      // 輪のある惑星
+      g.fillStyle = '#5a6ad8';
+      g.beginPath();
+      g.arc(380, 70, 22, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#8a9af0';
+      g.beginPath();
+      g.arc(374, 64, 14, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = '#d0d8ff';
+      g.lineWidth = 2;
+      g.beginPath();
+      g.ellipse(380, 72, 36, 8, -0.3, 0, Math.PI * 2);
+      g.stroke();
+      // 流れ星
+      g.strokeStyle = 'rgba(255,255,255,0.7)';
+      g.lineWidth = 1;
+      for (const [x, y] of [[90, 40], [250, 120]]) {
+        g.beginPath();
+        g.moveTo(x, y);
+        g.lineTo(x + 26, y + 10);
+        g.stroke();
+      }
     } else if (name === 'dark') {
       // やみの国：大きな青白い月、くずれた塔と枯れ木の影、ただよう光の粒
       for (let i = 0; i < 60; i++) {

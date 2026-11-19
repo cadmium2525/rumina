@@ -3,6 +3,7 @@
 //   node tools/check_route.mjs 6-2:secret         ひみつのゴールまで
 //   node tools/check_route.mjs 1-3:secret@95,10   スタート位置を変える（x, 足もとの段。そこで ↑ を押してツタにつかまる）
 //   node tools/check_route.mjs --enemies 5-4      敵・砲台も出して探す（ドローンを踏み台にする所など）
+//   node tools/check_route.mjs --no-damage E-1    ダメージを受けずに通れる道を探す
 // 8 フレームごとに操作（右・走る・B・左・↑…）を選ぶビームサーチ。敵・砲台・アイテムは出さず、
 // ルミナは大きい状態。フレーム単位の操作は使わないので、見つかる道は人の操作でも再現できる程度のもの。
 import { World } from '../js/world.js';
@@ -136,7 +137,8 @@ function act(w, hold) {
   return null;
 }
 
-export function findRoute(id, { want = 'goal', maxDepth = 900, beam = BEAM, log = false, from = null, enemies = false } = {}) {
+// noDamage：ダメージを受けた候補も捨てる（ダメージを受けずに通れるかを調べる）
+export function findRoute(id, { want = 'goal', maxDepth = 900, beam = BEAM, log = false, from = null, enemies = false, noDamage = false } = {}) {
   const w = makeWorld(id, enemies);
   if (from) {
     // 途中から：その場所に置いて、ツタ・ハシゴがあればつかまる
@@ -155,6 +157,7 @@ export function findRoute(id, { want = 'goal', maxDepth = 900, beam = BEAM, log 
         restore(w, node.s);
         const r = act(w, a);
         if (r === 'dead') continue;
+        if (noDamage && (!w.player.powerUp || w.player.hurtTimer)) continue;
         const path = node.path.concat(a);
         if (r && (r === want || (want === 'goal' && r === 'door'))) return { ok: true, depth, frames: path.length * MACRO, path };
         if (r) continue; // 目的と違うゴール
@@ -192,12 +195,13 @@ export function findRoute(id, { want = 'goal', maxDepth = 900, beam = BEAM, log 
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const enemies = process.argv.includes('--enemies');
+  const noDamage = process.argv.includes('--no-damage');
   for (const arg of process.argv.slice(2).filter((a) => !a.startsWith('--'))) {
     const [id, rest = ''] = arg.split(':');
     const [kind, at] = rest.split('@');
     const t0 = Date.now();
     const from = at ? at.split(',').map(Number) : null;
-    const r = findRoute(id, { want: kind === 'secret' ? 'secret' : 'goal', log: !!process.env.LOG, from, enemies });
+    const r = findRoute(id, { want: kind === 'secret' ? 'secret' : 'goal', log: !!process.env.LOG, from, enemies, noDamage });
     console.log(`${arg}: ${r.ok ? `ok (${r.frames} フレーム)` : `通れない？ 最も進んだ x=${r.best.toFixed(1)}`} ${((Date.now() - t0) / 1000).toFixed(1)}s`);
   }
 }

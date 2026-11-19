@@ -1143,3 +1143,44 @@ export const SHADOW_LEDGE = [
   '................',
   '................',
 ];
+
+// ---- 宇宙（エクストラ ほしの道） ----
+export const PAL_SPACE = { K: '#06061a', w: '#ffffff', c: '#7ad0ff', b: '#3a5ab8' };
+// ほしのブロック（固いブロック）：光る水色の結晶
+export const STAR_BLOCK = [
+  '.KKKKKKKKKKKKKK.',
+  'KwccccccccccccbK',
+  'KcwcccccccccccbK',
+  'KccbbbbbbbbbccbK',
+  'KccbwccccccbccbK',
+  'KccbcwcccccbccbK',
+  'KccbccccccwbccbK',
+  'KccbcccwccccccbK',
+  'KccbccccccccccbK',
+  'KccbcccccwccccbK',
+  'KccbccccccccccbK',
+  'KccbbbbbbbbbccbK',
+  'KccccccccccccwbK',
+  'KcccccccccccccbK',
+  'KbbbbbbbbbbbbbbK',
+  '.KKKKKKKKKKKKKK.',
+];
+// ほしの足場（上からだけ乗れる）：光の橋
+export const STAR_LEDGE = [
+  'KKKKKKKKKKKKKKKK',
+  'KwwwwwwwwwwwwwwK',
+  'KccwcccccwcccccK',
+  'KbbbbbbbbbbbbbbK',
+  'KKKKKKKKKKKKKKKK',
+  '...K.w....w.K...',
+  '.....K....K.....',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+];

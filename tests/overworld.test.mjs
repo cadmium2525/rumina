@@ -100,13 +100,14 @@ const finishReveal = (ow) => { for (let f = 0; f < 2000 && ow.reveal.length; f++
   console.log('warp: ok');
 }
 {
-  // まだ作っていないステージ（エクストラの E-1）：歩いて行けるが、入れず、先の道も開かない
+  // まだ作っていないステージ（ここではエクストラの E-1 を「まだ無い」ことにする）：歩いて行けるが、入れず、先の道も開かない
   const st = memory();
   const save = loadSave(st);
-  save.cleared = playable.slice();
+  const soonList = playable.filter((id) => id !== 'E-1');
+  save.cleared = playable.filter((id) => !id.startsWith('E-')); // エクストラはまだ 1 つもクリアしていない
   save.map = 'ex';
   save.node = 'P';
-  const ow = new Overworld(save, playable, st);
+  const ow = new Overworld(save, soonList, st);
   go(ow, R);
   assert.equal(ow.nodeKey, 'a');
   assert.ok(ow.isSoon(ow.node()));
@@ -115,10 +116,10 @@ const finishReveal = (ow) => { for (let f = 0; f < 2000 && ow.reveal.length; f++
   assert.equal(ow.nodeKey, 'a', 'path beyond is closed');
   // ほしの道の門は、8-5（最後のボス）をクリアするまで開かない
   const before = { ...save, cleared: save.cleared.filter((id) => id !== '8-5'), map: 'w8', node: 'P' };
-  const owA = new Overworld(before, playable, st);
+  const owA = new Overworld(before, soonList, st);
   const gate = (o) => Object.values(o.graph.chains).find((ch) => [ch.a, ch.b].includes('X'));
   assert.ok(!owA.isOpenChain(gate(owA)), 'gate closed before 8-5');
-  const owB = new Overworld({ ...save, map: 'w8', node: 'P' }, playable, st);
+  const owB = new Overworld({ ...save, map: 'w8', node: 'P' }, soonList, st);
   assert.ok(owB.isOpenChain(gate(owB)), 'gate opens after 8-5');
   console.log('soon: ok');
 }

@@ -59,6 +59,16 @@ import { STAGE_8_4 } from './stage8_4.js';
 import { STAGE_8_5 } from './stage8_5.js';
 import { STAGE_8_5B } from './stage8_5b.js';
 import { STAGE_8_S } from './stage8_s.js';
+import { STAGE_E1 } from './stage_e1.js';
+import { STAGE_E2 } from './stage_e2.js';
+import { STAGE_E3 } from './stage_e3.js';
+import { STAGE_E4 } from './stage_e4.js';
+import { STAGE_E5 } from './stage_e5.js';
+import { STAGE_E6 } from './stage_e6.js';
+import { STAGE_E7 } from './stage_e7.js';
+import { STAGE_E8 } from './stage_e8.js';
+import { STAGE_E9 } from './stage_e9.js';
+import { STAGE_E10 } from './stage_e10.js';
 
 export const STAGES = [
   { id: '1-1', make: makeAkihabara },
@@ -116,6 +126,19 @@ export const STAGES = [
   { id: '8-3', make: () => STAGE_8_3 },
   { id: '8-4', make: () => STAGE_8_4 }, // 暗やみ・強制スクロール（遅い）
   { id: '8-5', make: () => STAGE_8_5 }, // 暗やみ
-  { id: '8-5B', make: () => STAGE_8_5B, hidden: true, credit: '8-5', ending: true }, // 最後のボス
+  { id: '8-5B', make: () => STAGE_8_5B, hidden: true, credit: '8-5',
+    ending: ['やみの国に 光が もどった！', 'ありがとう、ルミナ。', '地図に ほしの道が ひらいたよ'] }, // 最後のボス
   { id: '8-S', make: () => STAGE_8_S }, // 隠しコース（地図の H）。強制スクロール（速い）
+  // エクストラ ほしの道（高難易度）。8-5 をクリアすると地図の門が開く
+  { id: 'E-1', make: () => STAGE_E1 },
+  { id: 'E-2', make: () => STAGE_E2 },
+  { id: 'E-3', make: () => STAGE_E3 },
+  { id: 'E-4', make: () => STAGE_E4 },
+  { id: 'E-5', make: () => STAGE_E5 },
+  { id: 'E-6', make: () => STAGE_E6 },
+  { id: 'E-7', make: () => STAGE_E7 },
+  { id: 'E-8', make: () => STAGE_E8 },
+  { id: 'E-9', make: () => STAGE_E9 },
+  { id: 'E-10', make: () => STAGE_E10,
+    ending: ['ほしの道を ぜんぶ 走りきった！', 'ルミナは ほんとうの 光の少女だね。', 'あそんでくれて ありがとう！'] }, // エクストラの最後
 ];

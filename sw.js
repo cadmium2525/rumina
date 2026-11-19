@@ -1,5 +1,5 @@
 // オフライン用 Service Worker。ファイルを更新したら VERSION を上げる
-const VERSION = 'rumina-v28';
+const VERSION = 'rumina-v29';
 const ASSETS = [
   './', 'index.html', 'style.css', 'manifest.webmanifest',
   'js/main.js', 'js/player.js', 'js/smw_tables.js', 'js/sprites.js', 'js/rumina_frames.js',
@@ -13,6 +13,7 @@ const ASSETS = [
   'js/stages/stage6_1.js', 'js/stages/stage6_2.js', 'js/stages/stage6_3.js', 'js/stages/stage6_4.js', 'js/stages/stage6_5.js', 'js/stages/stage6_5b.js', 'js/stages/stage6_s.js',
   'js/stages/stage7_1.js', 'js/stages/stage7_2.js', 'js/stages/stage7_3.js', 'js/stages/stage7_4.js', 'js/stages/stage7_5.js', 'js/stages/stage7_5b.js', 'js/stages/stage7_s.js',
   'js/stages/stage8_1.js', 'js/stages/stage8_2.js', 'js/stages/stage8_3.js', 'js/stages/stage8_4.js', 'js/stages/stage8_5.js', 'js/stages/stage8_5b.js', 'js/stages/stage8_s.js',
+  'js/stages/stage_e1.js', 'js/stages/stage_e2.js', 'js/stages/stage_e3.js', 'js/stages/stage_e4.js', 'js/stages/stage_e5.js', 'js/stages/stage_e6.js', 'js/stages/stage_e7.js', 'js/stages/stage_e8.js', 'js/stages/stage_e9.js', 'js/stages/stage_e10.js',
   'js/overworld/maps.js', 'js/overworld/overworld.js', 'js/overworld/overworld_view.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon-180.png',
 ];

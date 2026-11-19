@@ -23,7 +23,7 @@ for (const [id, title] of Object.entries(titles)) {
   if (id === '8-5') {
     assert.equal(lv.doorTo, '8-5B');
   } else if (id === '8-5B') {
-    assert.ok(st.hidden && st.credit === '8-5' && st.ending, 'final boss room');
+    assert.ok(st.hidden && st.credit === '8-5' && st.ending?.length === 3, 'final boss room');
     assert.deepEqual(lv.spawns.map((s) => s.type), ['boss8']);
   } else {
     assert.ok(lv.goal && lv.floorPx(lv.goal.tx * 16 + 8, (lv.goal.ty + 1) * 16 + 4), `${id} goal`);

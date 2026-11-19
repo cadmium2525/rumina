@@ -60,6 +60,10 @@ const PALETTE = [
     tile(T.BOSS_DOOR_TOP, 'ボス扉（上）'), tile(T.BOSS_DOOR, 'ボス扉（下。置くと行き先を入力。↑で入る）'),
   ]],
   ['空', [tile(T.CLOUD, '雲（上からだけ乗れる）')]],
+  ['宇宙', [
+    tile(T.STAR_BLOCK, 'ほしのブロック'),
+    tile(T.STAR_LEDGE, 'ほしの足場（上からだけ乗れる）'),
+  ]],
   ['やみ', [
     tile(T.SHADOW_BLOCK, 'やみの石'),
     tile(T.SHADOW_LEDGE, 'やみの足場（上からだけ乗れる）'),

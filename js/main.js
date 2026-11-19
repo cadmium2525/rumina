@@ -258,15 +258,17 @@ function drawClear() {
   g.strokeText('コースクリア！', SCREEN_W / 2, 80);
   g.fillStyle = '#ffe070';
   g.fillText('コースクリア！', SCREEN_W / 2, 80);
-  if (STAGES[stageIndex]?.ending) {
-    // 最後のボスを倒した
+  const ending = STAGES[stageIndex]?.ending;
+  if (ending) {
+    // 最後のボスを倒した・ほしの道を走りきった：エンディングの文（最後の行は水色）
     g.font = 'bold 13px system-ui, sans-serif';
     g.lineWidth = 3;
-    for (const [text, y] of [['やみの国に 光が もどった！', 112], ['ありがとう、ルミナ。', 132], ['地図に ほしの道が ひらいたよ', 160]]) {
+    ending.forEach((text, i) => {
+      const y = 112 + i * 20 + (i === ending.length - 1 ? 8 : 0);
       g.strokeText(text, SCREEN_W / 2, y);
-      g.fillStyle = y === 160 ? '#c8d8ff' : '#ffffff';
+      g.fillStyle = i === ending.length - 1 ? '#c8d8ff' : '#ffffff';
       g.fillText(text, SCREEN_W / 2, y);
-    }
+    });
   }
   g.restore();
 }
