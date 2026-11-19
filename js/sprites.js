@@ -160,8 +160,11 @@ export class ActorSprites {
     this.boss2Ball = this.makeSpikeBall(fire);
     // やみの王：黒と緑の色ちがい
     const dark = { ...PAL_BOSS, p: '#5a6a78', P: '#28303c', n: '#10141c', c: '#80ff90', r: '#b060ff', y: '#d0d8e8', Y: '#8890a8' };
-    this.bossSets = [null, this.boss, this.boss2, [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, dark))];
-    this.bossBalls = [null, this.bossBall, this.boss2Ball, this.makeSpikeBall(dark)];
+    // いわの王：岩の灰色と琥珀色の目
+    const stone = { ...PAL_BOSS, p: '#b8b0a0', P: '#7a7064', n: '#463e36', c: '#ffb840', r: '#d07028', y: '#e0d8c8', Y: '#9a9080' };
+    this.bossSets = [null, this.boss, this.boss2, [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, dark)),
+      [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, stone))];
+    this.bossBalls = [null, this.bossBall, this.boss2Ball, this.makeSpikeBall(dark), this.makeSpikeBall(stone)];
     this.robo = [both(ROBO_A), both(ROBO_B)];
     this.drone = [both(DRONE_A), both(DRONE_B)];
     this.spark = [both(SPARK_A), both(SPARK_B)];
@@ -278,6 +281,22 @@ export class ActorSprites {
   }
 
   drawActor(g, a, frame, x, y) {
+    if (a.type === 'boss4') return this.drawBoss(g, { ...a, variant: 4, type: 'boss' }, frame, x, y);
+    if (a.type === 'rock') {
+      // 落石：落ちる前は揺れる
+      const sx = a.wait ? ((frame >> 1) & 1) * 2 - 1 : 0;
+      g.fillStyle = '#24141c';
+      g.fillRect(x + 2 + sx, y + 3, 12, 11);
+      g.fillRect(x + 3 + sx, y + 2, 10, 13);
+      g.fillStyle = '#9a9080';
+      g.fillRect(x + 3 + sx, y + 4, 10, 9);
+      g.fillRect(x + 4 + sx, y + 3, 8, 11);
+      g.fillStyle = '#c8c0b0';
+      g.fillRect(x + 4 + sx, y + 4, 4, 3);
+      g.fillStyle = '#6a6056';
+      g.fillRect(x + 9 + sx, y + 9, 3, 3);
+      return;
+    }
     if (a.type === 'boss3') return this.drawBoss(g, { ...a, variant: 3, type: 'boss' }, frame, x, y);
     if (a.type === 'boss2') return this.drawBoss(g, { ...a, variant: 2, type: 'boss' }, frame, x, y); // エディタ用
     if (a.type === 'boss') return this.drawBoss(g, a, frame, x, y);

@@ -75,7 +75,7 @@ const BOUNCE_OFFSETS = [-4, -7, -8, -9, -8, -6, -3, 0];
 const SPIN_TIME = 256;
 
 // ステージに置ける敵・物
-export const SPAWN_TYPES = ['gift', 'shell', 'spiker', 'capsule', 'robo', 'drone', 'spark', 'boss', 'boss2', 'boss3'];
+export const SPAWN_TYPES = ['gift', 'shell', 'spiker', 'capsule', 'robo', 'drone', 'spark', 'boss', 'boss2', 'boss3', 'boss4'];
 
 export const MIN_WIDTH = 16;
 export const MAX_WIDTH = 1024;

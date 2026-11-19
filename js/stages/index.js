@@ -23,6 +23,13 @@ import { STAGE_3_5B } from './stage3_5b.js';
 import { STAGE_1_S } from './stage1_s.js';
 import { STAGE_2_S } from './stage2_s.js';
 import { STAGE_3_S } from './stage3_s.js';
+import { STAGE_4_1 } from './stage4_1.js';
+import { STAGE_4_2 } from './stage4_2.js';
+import { STAGE_4_3 } from './stage4_3.js';
+import { STAGE_4_4 } from './stage4_4.js';
+import { STAGE_4_5 } from './stage4_5.js';
+import { STAGE_4_5B } from './stage4_5b.js';
+import { STAGE_4_S } from './stage4_s.js';
 
 export const STAGES = [
   { id: '1-1', make: makeAkihabara },
@@ -46,4 +53,11 @@ export const STAGES = [
   { id: '3-5', make: () => STAGE_3_5 },
   { id: '3-5B', make: () => STAGE_3_5B, hidden: true, credit: '3-5' },
   { id: '3-S', make: () => STAGE_3_S }, // 隠しコース（地図の H）
+  { id: '4-1', make: () => STAGE_4_1 },
+  { id: '4-2', make: () => STAGE_4_2 },
+  { id: '4-3', make: () => STAGE_4_3 },
+  { id: '4-4', make: () => STAGE_4_4 },
+  { id: '4-5', make: () => STAGE_4_5 },
+  { id: '4-5B', make: () => STAGE_4_5B, hidden: true, credit: '4-5' },
+  { id: '4-S', make: () => STAGE_4_S }, // 隠しコース（地図の H）
 ];

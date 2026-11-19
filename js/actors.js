@@ -802,7 +802,10 @@ export class Boss extends Enemy {
     this.type = 'boss';
     this.hp = 3;
     this.maxHp = 3;
-    this.variant = 1;
+    this.variant = 1;  // 1 かげの王 / 2 ほのおの王 / 3 やみの王 / 4 いわの王
+    this.balls = 1;    // 一度に投げる玉の数
+    this.baseRage = 0; // はじめの速さ（弱るほど速くなる）
+    this.rocks = false; // 大ジャンプの着地で天井から落石を降らせる
     this.state = 'walk';
     this.timer = 90;
     this.inv = 0;      // ダメージ後の無敵
@@ -827,7 +830,7 @@ export class Boss extends Enemy {
       return;
     }
     const p = w.player;
-    const rage = Math.min(4, this.maxHp - this.hp + this.variant - 1); // 弱るほど速い
+    const rage = Math.min(4, this.maxHp - this.hp + this.baseRage); // 弱るほど速い
     if (this.state === 'shell') {
       this.xs = this.dir * (0x1c + rage * 4);
     } else {
@@ -840,6 +843,11 @@ export class Boss extends Enemy {
     const f = this.collide(w.level);
     if (f.floor) this.ys = 0;
     if (f.ceiling) this.ys = 0;
+    if (f.floor && this.jumped) {
+      // 大ジャンプの着地
+      this.jumped = false;
+      if (this.rocks && !this.dying) this.dropRocks(w);
+    }
     if (this.state === 'shell') {
       if (f.wall) {
         this.dir = -this.dir;
@@ -854,10 +862,11 @@ export class Boss extends Enemy {
       if (this.moves++ & 1) {
         this.ys = -0x50; // 大ジャンプ
         this.xs = (this.facing ? 1 : -1) * 0x10;
+        this.jumped = true;
       } else {
         w.actors.push(new ShadowBall(this.x + (this.facing ? 14 : -14), this.y - 6, this.facing ? 1 : -1));
-        // ほのおの王は高さの違う玉を 2 つ、やみの王は 3 つ投げる
-        for (let i = 1; i < this.variant; i++) {
+        // ほのおの王・いわの王は高さの違う玉を 2 つ、やみの王は 3 つ投げる
+        for (let i = 1; i < this.balls; i++) {
           w.actors.push(new ShadowBall(this.x + (this.facing ? 14 : -14), this.y - 6 - 24 * i, this.facing ? 1 : -1));
         }
         w.emit('throw');
@@ -895,6 +904,52 @@ export class Boss extends Enemy {
   }
 
   kill() { if (this.w) this.damage(); }
+
+  // 天井から落石を 3 つ（ルミナのまわり。真上・少し前・少し後ろ）
+  dropRocks(w) {
+    const p = w.player;
+    const lv = w.level;
+    for (const dx of [-28, 4, 36]) {
+      const x = Math.max(16, Math.min(lv.widthPx - 32, p.xpos + dx));
+      // 天井（固いブロック）のすぐ下から落とす
+      let y = this.y;
+      while (y > 0 && !lv.solidPx(x + 8, y - 1)) y -= 16;
+      w.actors.push(new FallingRock(x, Math.floor(y / 16) * 16, Math.abs(dx) * 0.8));
+    }
+    w.emit('bump');
+  }
+}
+
+// 落石（いわの王）：少し揺れてから落ちてくる。触れるとダメージ。床に当たると砕ける
+export class FallingRock extends Sprite {
+  constructor(x, y, wait = 0) {
+    super(x, y);
+    this.type = 'rock';
+    this.wait = 24 + Math.round(wait); // 落ちる前に揺れる時間
+  }
+
+  get hitbox() { return { x: this.x + 2, y: this.y + 2, w: 12, h: 12 }; }
+
+  update(w) {
+    if (this.contactTimer) this.contactTimer--;
+    if (this.wait) {
+      this.wait--;
+    } else {
+      this.moveY();
+      this.ys = Math.min(this.ys + SPR_GRAVITY, SPR_MAX_FALL);
+      if (w.level.solidPx(this.x + 8, this.y + 15)) {
+        this.dead = true;
+        w.addPieces(this.x, this.y, 'gold');
+        w.emit('shatter');
+        return;
+      }
+    }
+    if (this.y > LEVEL_H) this.dead = true;
+    if (!this.contactTimer && touchesPlayer(w.player, this.hitbox)) {
+      this.contactTimer = 8;
+      if (w.player.hurt()) w.onPlayerHurt();
+    }
+  }
 }
 
 // ほのおの王（ワールド 2 のボス）：かげの王より速く、5 回踏まないと倒れない。玉を 2 つ投げる
@@ -904,6 +959,8 @@ export class Boss2 extends Boss {
     this.hp = 5;
     this.maxHp = 5;
     this.variant = 2;
+    this.balls = 2;
+    this.baseRage = 1;
   }
 }
 
@@ -914,6 +971,21 @@ export class Boss3 extends Boss {
     this.hp = 7;
     this.maxHp = 7;
     this.variant = 3;
+    this.balls = 3;
+    this.baseRage = 2;
+  }
+}
+
+// いわの王（ワールド 4 のボス）：6 回踏まないと倒れない。玉を 2 つ投げ、大ジャンプの着地で天井から落石を降らせる
+export class Boss4 extends Boss {
+  constructor(x, y) {
+    super(x, y);
+    this.hp = 6;
+    this.maxHp = 6;
+    this.variant = 4;
+    this.balls = 2;
+    this.baseRage = 2;
+    this.rocks = true;
   }
 }
 

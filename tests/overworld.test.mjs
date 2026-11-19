@@ -100,11 +100,11 @@ const finishReveal = (ow) => { for (let f = 0; f < 2000 && ow.reveal.length; f++
   console.log('warp: ok');
 }
 {
-  // まだ作っていないステージ（4-1）：歩いて行けるが、入れず、先の道も開かない
+  // まだ作っていないステージ（5-1）：歩いて行けるが、入れず、先の道も開かない
   const st = memory();
   const save = loadSave(st);
   save.cleared = playable.slice();
-  save.map = 'w4';
+  save.map = 'w5';
   save.node = 'P';
   const ow = new Overworld(save, playable, st);
   go(ow, R);
