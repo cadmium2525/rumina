@@ -3,6 +3,7 @@ import { Level } from './level.js';
 import { STAGES } from './stages/index.js';
 import { RuminaSprite, SmokeSprites, ActorSprites } from './sprites.js';
 import { LevelView } from './level_view.js';
+import { Darkness } from './darkness.js';
 import { SCREEN_W, SCREEN_H } from './level.js';
 import { Input } from './input.js';
 import { sfx, unlockAudio } from './sfx.js';
@@ -19,6 +20,7 @@ g.imageSmoothingEnabled = false;
 const touchRoot = document.getElementById('touch');
 const input = new Input(touchRoot);
 const view = new LevelView();
+const darkness = new Darkness();
 const sprite = new RuminaSprite();
 const smokeSprites = new SmokeSprites();
 const actorSprites = new ActorSprites();
@@ -256,6 +258,16 @@ function drawClear() {
   g.strokeText('コースクリア！', SCREEN_W / 2, 80);
   g.fillStyle = '#ffe070';
   g.fillText('コースクリア！', SCREEN_W / 2, 80);
+  if (STAGES[stageIndex]?.ending) {
+    // 最後のボスを倒した
+    g.font = 'bold 13px system-ui, sans-serif';
+    g.lineWidth = 3;
+    for (const [text, y] of [['やみの国に 光が もどった！', 112], ['ありがとう、ルミナ。', 132], ['地図に ほしの道が ひらいたよ', 160]]) {
+      g.strokeText(text, SCREEN_W / 2, y);
+      g.fillStyle = y === 160 ? '#c8d8ff' : '#ffffff';
+      g.fillText(text, SCREEN_W / 2, y);
+    }
+  }
   g.restore();
 }
 
@@ -312,6 +324,8 @@ function renderLevel() {
     else if (e.kind === 'splash') actorSprites.drawSplash(g, e, e.x - camX, e.y - camY);
   }
   view.drawWater(g, world.level, camX, camY, world.frame);
+  // 暗やみ：光る物のまわりだけ見える
+  if (world.level.dark) darkness.draw(g, world, camX, camY, world.frame);
 
   drawPMeter();
   if (world.doorEntered) {

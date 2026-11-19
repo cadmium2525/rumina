@@ -43,11 +43,13 @@ export const TILE = {
   NOTE: 77, NEON_LEDGE: 78,
   // 火山（ワールド 7）：火山岩（固い）と、上からだけ乗れる冷えた溶岩の足場
   BASALT: 79, BASALT_LEDGE: 80,
+  // やみの国（ワールド 8）：やみの石（固い）と、上からだけ乗れるやみの足場
+  SHADOW_BLOCK: 81, SHADOW_LEDGE: 82,
 };
 export const isDoor = (t) => t === TILE.BOSS_DOOR || t === TILE.BOSS_DOOR_TOP;
 export const TILE_COUNT = 96;
 // テーマ（背景と地面・坂の見た目）
-export const THEMES = ['grass', 'cave', 'ruins', 'castle', 'akiba', 'sky', 'neon', 'volcano'];
+export const THEMES = ['grass', 'cave', 'ruins', 'castle', 'akiba', 'sky', 'neon', 'volcano', 'dark'];
 // 使っている坂：ゆるい右上がり (k8,k9)・ゆるい右下がり (k10,k11)・45°右上がり (k12)・45°右下がり (k13)
 export const SLOPE_K = {
   UP_G1: 8, UP_G2: 9, DOWN_G1: 10, DOWN_G2: 11, UP_45: 12, DOWN_45: 13,
@@ -59,10 +61,10 @@ const SOLID = new Array(TILE_COUNT).fill(false);
 for (const t of [TILE.GROUND, TILE.STONE, TILE.TURN, TILE.QUESTION, TILE.USED, TILE.CAVE_ROCK,
   TILE.RUIN_BRICK, TILE.RUIN_BLOCK, TILE.CASTLE_BRICK, TILE.CASTLE_BLOCK, TILE.SPIKE,
   TILE.SPIKE_DOWN, TILE.DUCT_TL, TILE.DUCT_TR, TILE.DUCT_L, TILE.DUCT_R, TILE.CONCRETE, TILE.MESSAGE,
-  TILE.CANNON, TILE.NOTE, TILE.BASALT]) SOLID[t] = true;
+  TILE.CANNON, TILE.NOTE, TILE.BASALT, TILE.SHADOW_BLOCK]) SOLID[t] = true;
 // 足元だけ固い（上から乗れる）
 const FLOOR = SOLID.slice();
-for (const t of [TILE.LEDGE, TILE.CAVE_LEDGE, TILE.RUIN_LEDGE, TILE.CASTLE_LEDGE, TILE.RAIL, TILE.CLOUD, TILE.NEON_LEDGE, TILE.BASALT_LEDGE]) FLOOR[t] = true;
+for (const t of [TILE.LEDGE, TILE.CAVE_LEDGE, TILE.RUIN_LEDGE, TILE.CASTLE_LEDGE, TILE.RAIL, TILE.CLOUD, TILE.NEON_LEDGE, TILE.BASALT_LEDGE, TILE.SHADOW_LEDGE]) FLOOR[t] = true;
 // 触れるとダメージを受けるブロック
 export const isHurtBlock = (t) => t === TILE.SPIKE || t === TILE.SPIKE_DOWN;
 // 上からだけ乗れる足場か
@@ -90,7 +92,7 @@ export const NOTE_LAUNCH = -96;      // 跳ね終わりのルミナの速さ (pl
 export const AUTO_SCROLL_MAX = [0x80, 0x100];
 
 // ステージに置ける敵・物
-export const SPAWN_TYPES = ['gift', 'shell', 'spiker', 'capsule', 'robo', 'drone', 'spark', 'boss', 'boss2', 'boss3', 'boss4', 'boss5', 'boss6', 'boss7', 'ember'];
+export const SPAWN_TYPES = ['gift', 'shell', 'spiker', 'capsule', 'robo', 'drone', 'spark', 'boss', 'boss2', 'boss3', 'boss4', 'boss5', 'boss6', 'boss7', 'ember', 'bat', 'boss8'];
 
 export const MIN_WIDTH = 16;
 export const MAX_WIDTH = 1024;
@@ -110,6 +112,7 @@ export class Level {
     this.title = '';           // 始まる時に出す名前（例「1-1 アキハバラ」）
     this.doorTo = '';          // ボス扉の行き先のステージ（空ならクリア）
     this.autoScroll = 0;       // 強制スクロール：0 なし / 1 遅い / 2 速い（SMW の Spr0F3_RegularAutoScroll）
+    this.dark = false;         // 暗やみ：ルミナのまわりと、たいまつ・溶岩などの光る物のまわりだけが見える（見た目だけ）
     if (data) {
       this.load(data);
     } else {
@@ -151,7 +154,7 @@ export class Level {
       i += n;
     }
     return {
-      format: 'rumina-level', version: 1, title: this.title, doorTo: this.doorTo, autoScroll: this.autoScroll,
+      format: 'rumina-level', version: 1, title: this.title, doorTo: this.doorTo, autoScroll: this.autoScroll, dark: this.dark,
       width: this.width, height: TILES_H, theme: this.theme,
       start: { ...this.start },
       goal: this.goal ? { ...this.goal } : null,
@@ -190,6 +193,7 @@ export class Level {
     this.title = String(d.title ?? '');
     this.doorTo = String(d.doorTo ?? '');
     this.autoScroll = [0, 1, 2].includes(d.autoScroll) ? d.autoScroll : 0;
+    this.dark = !!d.dark;
   }
 
   set(tx, ty, v) {

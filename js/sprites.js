@@ -172,8 +172,11 @@ export class ActorSprites {
     // かざんの王：黒い岩肌に、溶岩のように光る橙と赤
     const magma = { ...PAL_BOSS, p: '#5a3a34', P: '#2a1612', n: '#140806', c: '#ffb040', r: '#ff5a1c', y: '#ffd060', Y: '#e8781c' };
     this.bossSets.push([BOSS_A, BOSS_B].map((f) => gridToCanvas(f, magma)));
+    // やみの大王：黒とむらさき、赤い目、金の冠
+    const king = { ...PAL_BOSS, p: '#4a2a78', P: '#1e1030', n: '#0a0614', c: '#ff3a5a', r: '#b060ff', y: '#ffd860', Y: '#d89a20' };
+    this.bossSets.push([BOSS_A, BOSS_B].map((f) => gridToCanvas(f, king)));
     this.bossBalls = [null, this.bossBall, this.boss2Ball, this.makeSpikeBall(dark), this.makeSpikeBall(stone), this.makeSpikeBall(sky),
-      this.makeSpikeBall(neon), this.makeSpikeBall(magma)];
+      this.makeSpikeBall(neon), this.makeSpikeBall(magma), this.makeSpikeBall(king)];
     this.robo = [both(ROBO_A), both(ROBO_B)];
     this.drone = [both(DRONE_A), both(DRONE_B)];
     this.spark = [both(SPARK_A), both(SPARK_B)];
@@ -277,16 +280,17 @@ export class ActorSprites {
       g.restore();
       return;
     }
-    if (a.variant === 5 && !a.onFloor && !a.dying) {
-      // そらの王：飛んでいる時は白い翼がはばたく
+    if ((a.variant === 5 || (a.variant === 8 && a.phase2)) && !a.onFloor && !a.dying) {
+      // そらの王：飛んでいる時は白い翼がはばたく。やみの大王（後半）は黒い翼
       const up = (frame >> 3) & 1;
+      const [wing, edge] = a.variant === 8 ? ['#2a1840', '#b060ff'] : ['#ffffff', '#a8c8f0'];
       for (const side of [-1, 1]) {
         const bx = side < 0 ? x - 14 : x + 22;
         g.fillStyle = '#24141c';
         g.fillRect(bx - 1, y - 10 + up * 3, 10, 7);
-        g.fillStyle = '#ffffff';
+        g.fillStyle = wing;
         g.fillRect(bx, y - 9 + up * 3, 8, 5);
-        g.fillStyle = '#a8c8f0';
+        g.fillStyle = edge;
         g.fillRect(side < 0 ? bx : bx + 4, y - 5 + up * 3, 4, 1);
       }
     }
@@ -303,7 +307,51 @@ export class ActorSprites {
   }
 
   drawActor(g, a, frame, x, y) {
+    if (a.type === 'boss8') return this.drawBoss(g, { ...a, variant: 8, type: 'boss', onFloor: true }, frame, x, y);
     if (a.type === 'boss7') return this.drawBoss(g, { ...a, variant: 7, type: 'boss' }, frame, x, y);
+    if (a.type === 'bat') {
+      // コウモリ：ぶら下がっている時は翼をたたんで逆さま。飛ぶ時は翼をはばたく
+      if (a.dying) {
+        g.save();
+        g.translate(0, 2 * y + 16);
+        g.scale(1, -1);
+      }
+      const hang = a.mode !== 'swoop';
+      const K = '#140a1e', B = '#5a3a8a', b = '#3a2460', E = '#ffd040';
+      if (hang) {
+        g.fillStyle = K;
+        g.fillRect(x + 6, y, 4, 2);       // 天井をつかむ足
+        g.fillRect(x + 4, y + 2, 8, 12);
+        g.fillStyle = b;
+        g.fillRect(x + 5, y + 3, 6, 10);  // たたんだ翼
+        g.fillStyle = B;
+        g.fillRect(x + 6, y + 4, 4, 6);
+        g.fillStyle = E;
+        g.fillRect(x + 6, y + 10, 1, 1);  // 逆さまの目
+        g.fillRect(x + 9, y + 10, 1, 1);
+      } else {
+        const up = (frame >> 2) & 1;
+        g.fillStyle = K;
+        g.fillRect(x + 5, y + 4, 6, 8);
+        g.fillRect(x + 5, y + 2, 2, 2);  // 耳
+        g.fillRect(x + 9, y + 2, 2, 2);
+        g.fillStyle = B;
+        g.fillRect(x + 6, y + 5, 4, 6);
+        // 翼
+        for (const side of [-1, 1]) {
+          const wx = side < 0 ? x : x + 11;
+          g.fillStyle = K;
+          g.fillRect(wx, y + (up ? 2 : 7), 5, 5);
+          g.fillStyle = b;
+          g.fillRect(wx + (side < 0 ? 1 : 0), y + (up ? 3 : 8), 4, 3);
+        }
+        g.fillStyle = E;
+        g.fillRect(x + 6, y + 6, 1, 1);
+        g.fillRect(x + 9, y + 6, 1, 1);
+      }
+      if (a.dying) g.restore();
+      return;
+    }
     if (a.type === 'boss6') return this.drawBoss(g, { ...a, variant: 6, type: 'boss' }, frame, x, y);
     if (a.type === 'ember') {
       // ひのこ：しずく形の炎に目。溶岩にひそんでいる間は見えない（エディタでは見える）

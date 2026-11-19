@@ -1014,6 +1014,41 @@ export class FirePillar extends Sprite {
   }
 }
 
+// コウモリ：天井にぶら下がっていて、ルミナが近くの下に来ると、斜めに急降下してから横へ飛んでいく。
+// 地形はすり抜ける。上から踏める
+export class Bat extends Enemy {
+  constructor(x, y) {
+    super(x, y);
+    this.type = 'bat';
+    this.mode = 'hang';
+    this.t = 0;
+  }
+
+  get hitbox() { return { x: this.x + 2, y: this.y + 3, w: 12, h: 10 }; }
+
+  update(w) {
+    if (this.contactTimer) this.contactTimer--;
+    if (this.dying) return updateDying(this);
+    this.t++;
+    const p = w.player;
+    if (this.mode === 'hang') {
+      if (Math.abs(p.xpos - this.x) < 80 && p.ypos > this.y) {
+        this.mode = 'swoop';
+        this.facing = p.xpos > this.x ? 1 : 0;
+        this.xs = this.facing ? 0x10 : -0x10;
+        this.ys = 0x30;
+      }
+    } else {
+      this.moveX();
+      this.moveY();
+      if (this.ys > 0) this.ys--; // 下りながら横向きの飛び方に変わる
+      if (this.offscreen(w, 64)) this.dead = true;
+    }
+    this.touch(w);
+    if (this.mode === 'hang' && this.offscreen(w, 192)) this.dead = true;
+  }
+}
+
 // ひのこ：溶岩の中にひそんでいて、ときどき高く跳び出しては元の場所へ落ちてくる。
 // 跳んでいる間だけ見えて、触れるとダメージ。スピンジャンプで上から踏むと跳ね返れる
 export class Ember extends Enemy {
@@ -1170,6 +1205,7 @@ export class Boss5 extends Boss {
     this.baseRage = 1;
     this.state = 'rise';
     this.t = 0;
+    this.rain = 3; // 玉の雨の数
   }
 
   update(w) {
@@ -1210,8 +1246,9 @@ export class Boss5 extends Boss {
           this.state = 'dive';
           this.ys = 0;
         } else {
-          // 玉の雨：真下へ 3 つ
-          for (const ox of [-24, 0, 24]) {
+          // 玉の雨：真下へ rain 個（24px おき）
+          for (let i = 0; i < this.rain; i++) {
+            const ox = (i - (this.rain - 1) / 2) * 24;
             const b = new ShadowBall(this.x + ox, this.y + 4, 0);
             b.xs = 0;
             b.ys = 0x18;
@@ -1231,6 +1268,7 @@ export class Boss5 extends Boss {
         this.state = 'rest';
         this.timer = 70 - rage * 8;
         w.emit('bump');
+        if (this.pillars) this.raisePillars(w); // やみの大王：急降下の着地で火柱
       }
     } else if (this.state === 'rest') {
       // 床で休む（踏むチャンス）
@@ -1248,6 +1286,43 @@ export class Boss5 extends Boss {
         if (p.hurt()) w.onPlayerHurt();
       }
     }
+  }
+}
+
+// やみの大王（ワールド 8 の最後のボス）：10 回踏まないと倒れない。
+// 前半（体力 6 以上）は地上で玉を 3 つ投げ、大ジャンプの着地で床を走る電撃を出す。
+// 後半（体力 5 以下）は翼を広げて飛び、玉の雨（5 つ）と急降下。急降下の着地で火柱を噴き上げる
+export const BOSS8_HP = 10;
+export class Boss8 extends Boss5 {
+  constructor(x, y) {
+    super(x, y);
+    this.hp = BOSS8_HP;
+    this.maxHp = BOSS8_HP;
+    this.variant = 8;
+    this.balls = 3;
+    this.baseRage = 2;
+    this.rain = 5;
+    this.shock = true;
+    this.state = 'walk';
+    this.timer = 90;
+    this.phase2 = false;
+  }
+
+  update(w) {
+    if (!this.phase2 && this.hp > BOSS8_HP / 2) {
+      Boss.prototype.update.call(this, w);
+      return;
+    }
+    if (!this.phase2) {
+      // 後半へ：電撃をやめて、空を飛び、火柱を使う
+      this.phase2 = true;
+      this.shock = false;
+      this.pillars = true;
+      this.baseRage = 1;
+      if (this.state !== 'shell') this.state = 'rise';
+      w.emit('rumble');
+    }
+    super.update(w);
   }
 }
 

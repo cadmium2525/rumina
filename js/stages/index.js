@@ -52,6 +52,13 @@ import { STAGE_7_4 } from './stage7_4.js';
 import { STAGE_7_5 } from './stage7_5.js';
 import { STAGE_7_5B } from './stage7_5b.js';
 import { STAGE_7_S } from './stage7_s.js';
+import { STAGE_8_1 } from './stage8_1.js';
+import { STAGE_8_2 } from './stage8_2.js';
+import { STAGE_8_3 } from './stage8_3.js';
+import { STAGE_8_4 } from './stage8_4.js';
+import { STAGE_8_5 } from './stage8_5.js';
+import { STAGE_8_5B } from './stage8_5b.js';
+import { STAGE_8_S } from './stage8_s.js';
 
 export const STAGES = [
   { id: '1-1', make: makeAkihabara },
@@ -104,4 +111,11 @@ export const STAGES = [
   { id: '7-5', make: () => STAGE_7_5 },
   { id: '7-5B', make: () => STAGE_7_5B, hidden: true, credit: '7-5' },
   { id: '7-S', make: () => STAGE_7_S }, // 隠しコース（地図の H）。強制スクロール（速い）
+  { id: '8-1', make: () => STAGE_8_1 },
+  { id: '8-2', make: () => STAGE_8_2 }, // 暗やみ。上の道にひみつのゴール
+  { id: '8-3', make: () => STAGE_8_3 },
+  { id: '8-4', make: () => STAGE_8_4 }, // 暗やみ・強制スクロール（遅い）
+  { id: '8-5', make: () => STAGE_8_5 }, // 暗やみ
+  { id: '8-5B', make: () => STAGE_8_5B, hidden: true, credit: '8-5', ending: true }, // 最後のボス
+  { id: '8-S', make: () => STAGE_8_S }, // 隠しコース（地図の H）。強制スクロール（速い）
 ];

@@ -83,6 +83,8 @@ const THEME_PAL = {
   neon: { ...TILE_PAL, K: '#0c0814', l: '#ff78c8', G: '#4a3a70', g: '#352a58', D: '#241c3c', d: '#1a142c', e: '#2e2650' },
   // 火山：黒っぽい岩の地面。表面のふちが溶岩の色に光る
   volcano: { ...TILE_PAL, K: '#160a0a', l: '#ff8a30', G: '#5a4038', g: '#3e2a26', D: '#2e201e', d: '#221614', e: '#4a2e24' },
+  // やみの国：むらさきに光るふちの、黒い石の地面
+  dark: { ...TILE_PAL, K: '#08050e', l: '#9a7ad8', G: '#3a2c50', g: '#2a2040', D: '#1e1830', d: '#151020', e: '#2c2444' },
 };
 // テーマごとの背景
 const SKY = {
@@ -94,6 +96,7 @@ const SKY = {
   sky: ['#3a80e8', '#bfe0ff'],
   neon: ['#05031a', '#2c1258'],
   volcano: ['#1a0610', '#8a2a10'],
+  dark: ['#05030c', '#24103a'],
 };
 // 1 枚絵のタイル（テーマによらない）
 const STAGE_TILES = {
@@ -175,6 +178,8 @@ export class LevelView {
     this.stage[TILE.CLOUD] = gridToCanvas(ART.CLOUD, ART.PAL_SKY);
     this.stage[TILE.BASALT] = gridToCanvas(ART.BASALT, ART.PAL_VOLCANO);
     this.stage[TILE.BASALT_LEDGE] = gridToCanvas(ART.BASALT_LEDGE, ART.PAL_VOLCANO);
+    this.stage[TILE.SHADOW_BLOCK] = gridToCanvas(ART.SHADOW_BLOCK, ART.PAL_DARK);
+    this.stage[TILE.SHADOW_LEDGE] = gridToCanvas(ART.SHADOW_LEDGE, ART.PAL_DARK);
     this.torch = [ART.TORCH_A, ART.TORCH_B].map((f) => gridToCanvas(f, PAL_STAGE));
     this.lavaTop = gridToCanvas(ART.LAVA_TOP, PAL_STAGE);
     this.lava = gridToCanvas(ART.LAVA, PAL_STAGE);
@@ -384,6 +389,52 @@ export class LevelView {
       for (let px = 10; px < 512; px += 64) g.fillRect(px, 176, 10, 48);
       g.fillStyle = '#5a4a8a';
       g.fillRect(0, 166, 512, 2);
+    } else if (name === 'dark') {
+      // やみの国：大きな青白い月、くずれた塔と枯れ木の影、ただよう光の粒
+      for (let i = 0; i < 60; i++) {
+        g.fillStyle = '#c8b8ff';
+        g.globalAlpha = 0.2 + rnd() * 0.5;
+        g.fillRect(Math.floor(rnd() * 512), Math.floor(rnd() * 120), 1, 1);
+      }
+      g.globalAlpha = 1;
+      const moon = g.createRadialGradient(120, 52, 4, 120, 52, 46);
+      moon.addColorStop(0, 'rgba(220,210,255,0.9)');
+      moon.addColorStop(0.45, 'rgba(180,160,240,0.55)');
+      moon.addColorStop(1, 'rgba(120,80,200,0)');
+      g.fillStyle = moon;
+      g.fillRect(70, 2, 100, 100);
+      g.fillStyle = '#e8e0ff';
+      g.beginPath();
+      g.arc(120, 52, 18, 0, Math.PI * 2);
+      g.fill();
+      // 遠くの山
+      for (let x = 0; x < 512; x++) {
+        const t = (x / 512) * Math.PI * 2;
+        const y = 140 + Math.sin(t * 2) * 14 + Math.sin(t * 9) * 4;
+        g.fillStyle = '#140a24';
+        g.fillRect(x, y, 1, 224 - y);
+      }
+      // くずれた塔
+      for (const [x, h, w] of [[40, 110, 22], [230, 140, 28], [400, 96, 20]]) {
+        g.fillStyle = '#0e0818';
+        g.fillRect(x, 224 - h, w, h);
+        for (let i = 0; i < w; i += 6) g.fillRect(x + i, 224 - h - 5, 3, 5); // 胸壁
+        g.fillStyle = '#2a1840';
+        g.fillRect(x + (w >> 1) - 2, 224 - h + 14, 4, 6); // 窓
+        g.fillStyle = '#05030c';
+        g.fillRect(x + w - 6, 224 - h, 6, 18); // 欠けた所
+      }
+      // 枯れ木
+      const tree = (x, h) => {
+        g.fillStyle = '#0a0612';
+        g.fillRect(x, 224 - h, 4, h);
+        for (let i = 0; i < 4; i++) {
+          const by = 224 - h + 8 + i * 9;
+          const dir = i & 1 ? 1 : -1;
+          for (let k = 0; k < 12; k++) g.fillRect(x + 2 + dir * k, by - (k >> 1), 2, 2);
+        }
+      };
+      for (const [x, h] of [[90, 70], [170, 56], [300, 80], [350, 50], [470, 66]]) tree(x, h);
     } else if (name === 'volcano') {
       // 噴煙を上げる大きな火山と、山はだを流れる溶岩、遠くの山並み、舞い上がる火の粉
       for (let x = 0; x < 512; x++) {

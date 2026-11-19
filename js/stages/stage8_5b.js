@@ -1,0 +1,2 @@
+// やみの大王。ステージエディタで作ったデータ（tools/ の build_stage_*.cjs がエディタを操作して書き出す）。
+export const STAGE_8_5B = {"format":"rumina-level","version":1,"title":"やみの大王","doorTo":"","autoScroll":0,"dark":true,"width":16,"height":27,"theme":"castle","start":{"tx":2,"ty":23},"goal":null,"secretGoal":null,"tiles":[0,160,55,33,0,14,55,2,0,4,60,1,0,4,60,1,0,4,55,2,0,14,55,2,0,14,55,2,0,1,60,1,0,10,60,1,0,1,55,2,0,14,55,2,0,14,55,2,0,6,60,2,0,6,55,2,0,1,57,3,0,6,57,3,0,1,55,2,0,14,55,2,0,14,55,2,0,14,55,1,1,48],"spawns":[{"type":"boss8","tx":11,"ty":23}],"items":[],"messages":[]};

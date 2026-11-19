@@ -1102,3 +1102,44 @@ export const BASALT_LEDGE = [
   '................',
   '................',
 ];
+
+// ---- やみの国（ワールド 8） ----
+export const PAL_DARK = { K: '#08050e', l: '#6a5a8a', D: '#3a3050', d: '#262036', p: '#b080ff' };
+// やみの石（固いブロック）：むらさきの光がにじむ石組み
+export const SHADOW_BLOCK = [
+  'KKKKKKKKKKKKKKKK',
+  'KllDDDDKKllDDDdK',
+  'KlDDDDDKKlDDDDdK',
+  'KDDDpDDKKDDDDDdK',
+  'KDDDDDdKKDDdDDdK',
+  'KddddddKKddddddK',
+  'KKKKKKKKKKKKKKKK',
+  'KKKKKKKKKKKKKKKK',
+  'KllDDKKllDDDDDdK',
+  'KlDDDKKlDDDDpDdK',
+  'KDDDdKKDDDDDDDdK',
+  'KDpDdKKDDdDDDDdK',
+  'KDDDdKKDDDDDDDdK',
+  'KddddKKddddddddK',
+  'KKKKKKKKKKKKKKKK',
+  'KKKKKKKKKKKKKKKK',
+];
+// やみの足場（上からだけ乗れる）
+export const SHADOW_LEDGE = [
+  'KKKKKKKKKKKKKKKK',
+  'KllllDDDDllllDDK',
+  'KDDDDDDpDDDDDDdK',
+  'KddddddddddddddK',
+  'KKKKKKKKKKKKKKKK',
+  '..KdK......KdK..',
+  '..KdK......KdK..',
+  '...K........K...',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+];

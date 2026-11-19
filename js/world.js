@@ -2,7 +2,7 @@
 // DOM に依存しない（描画は main.js / *_view.js）。
 import { Player } from './player.js';
 import { Level, Camera, GROUND_Y, SCREEN_W, LEVEL_H, TILE, CAM_Y, NOTE_YACCEL, NOTE_LAUNCH } from './level.js';
-import { GiftBox, Shell, Spiker, LightOrb, Goal, Capsule, Robo, Drone, Spark, Bullet, Boss, Boss2, Boss3, Boss4, Boss5, Boss6, Boss7, Ember } from './actors.js';
+import { GiftBox, Shell, Spiker, LightOrb, Goal, Capsule, Robo, Drone, Spark, Bullet, Boss, Boss2, Boss3, Boss4, Boss5, Boss6, Boss7, Boss8, Ember, Bat } from './actors.js';
 import { SHOOTER_TIME, SHOOTER_NEAR } from './smw_tables.js';
 import { BRICK_X, BRICK_Y, BRICK_XSPEED, BRICK_YSPEED } from './smw_tables.js';
 
@@ -257,7 +257,7 @@ export class World {
       }
       if (p.state === 'used' && far) p.state = 'idle';
       if (p.state === 'idle' && near) {
-        const make = { gift: GiftBox, shell: Shell, spiker: Spiker, capsule: Capsule, robo: Robo, drone: Drone, spark: Spark, boss: Boss, boss2: Boss2, boss3: Boss3, boss4: Boss4, boss5: Boss5, boss6: Boss6, boss7: Boss7, ember: Ember }[p.type];
+        const make = { gift: GiftBox, shell: Shell, spiker: Spiker, capsule: Capsule, robo: Robo, drone: Drone, spark: Spark, boss: Boss, boss2: Boss2, boss3: Boss3, boss4: Boss4, boss5: Boss5, boss6: Boss6, boss7: Boss7, ember: Ember, bat: Bat, boss8: Boss8 }[p.type];
         const a = new make(p.x, p.y);
         if (a.type === 'spiker') a.facing = this.player.xpos > p.x ? 1 : 0;
         this.actors.push(a);
