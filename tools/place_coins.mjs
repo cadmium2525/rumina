@@ -18,6 +18,8 @@ const INDEX = fs.readFileSync(path.join(ROOT, 'js/stages/index.js'), 'utf8');
 const fileOf = {};
 const constFile = Object.fromEntries([...INDEX.matchAll(/import \{ (\w+) \} from '\.\/([\w.]+)';/g)].map((m) => [m[1], m[2]]));
 for (const m of INDEX.matchAll(/id: '([^']+)', make: \(\) => (\w+)/g)) fileOf[m[1]] = constFile[m[2]];
+// 1-1 はプログラムで作るステージ（akihabara.js の return の前に spawn('graycoin', …) を書く）
+fileOf['1-1'] = 'akihabara.js';
 
 // コインを置くステージ：地図の点のステージと、最終コース（2 区間目）
 const ids = new Set();
@@ -30,12 +32,15 @@ for (const m of Object.values(OW_MAPS)) {
 const only = process.argv.slice(2);
 const targets = only.length ? only : [...ids];
 
-// 見つけた操作を再生して、毎フレームの位置を集める
-function replay(id, route) {
+// 見つけた操作を再生して、毎フレームの位置を集める（enemies：敵も出して探した道。check_route.mjs と同じ出し方）
+function replay(id, route, enemies) {
   const w = new World(STAGES.find((s) => s.id === id).make());
   w.introTimer = 0;
-  w.points = [];
-  w.shooters = [];
+  if (enemies) w.points = w.points.filter((pt) => pt.type !== 'gift' && pt.type !== 'shell');
+  else {
+    w.points = [];
+    w.shooters = [];
+  }
   w.actors = w.actors.filter((a) => a.type === 'goal');
   w.player.powerUp = 1;
   let p1 = 0, p2 = 0;
@@ -47,7 +52,7 @@ function replay(id, route) {
       p1 = h1;
       p2 = h2;
       w.message = null;
-      w.actors = w.actors.filter((x) => x.type === 'goal');
+      w.actors = enemies ? w.actors.filter((x) => x.type !== 'light') : w.actors.filter((x) => x.type === 'goal');
       // 足もとから床までの高さ
       const p = w.player;
       let fd = 999;
@@ -65,13 +70,20 @@ for (const id of targets) {
   const st = STAGES.find((s) => s.id === id);
   const lv0 = st.make();
   const castle = /-5$/.test(id) || id.startsWith('LAST');
-  let route = findRoute(id, { noDamage: true, doorOk: castle || !lv0.goal });
-  if (!route.ok) route = findRoute(id, { doorOk: castle || !lv0.goal });
+  const doorOk = castle || !lv0.goal;
+  let enemies = false;
+  let route = findRoute(id, { noDamage: true, doorOk });
+  if (!route.ok) route = findRoute(id, { doorOk });
+  // ドローンを踏み台にする所があるステージ（5-4・5-? など）は、敵も出して探す
+  if (!route.ok) {
+    enemies = true;
+    route = findRoute(id, { doorOk, enemies });
+  }
   if (!route.ok) {
     console.log(`${id}: 道が見つからない`);
     continue;
   }
-  const { w, pos } = replay(id, route);
+  const { w, pos } = replay(id, route, enemies);
   const W = w.level.widthPx;
   const lo = W * 0.35, hi = W * 0.75;
   let best = null;
@@ -90,6 +102,13 @@ for (const id of targets) {
   // ステージのデータを書きかえる
   const file = path.join(ROOT, 'js/stages', fileOf[id]);
   const src = fs.readFileSync(file, 'utf8');
+  if (fileOf[id] === 'akihabara.js') {
+    const line = `  spawn('graycoin', ${tx}, ${ty}); // グレイコイン（tools/place_coins.mjs）\n`;
+    const out = src.replace(/  spawn\('graycoin'.*\n/, '').replace(/(  return l\.toData\(\);)/, `${line}$1`);
+    fs.writeFileSync(file, out);
+    console.log(`${id}: (${tx}, ${ty})  幅 ${lv.width}  ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+    continue;
+  }
   const m = src.match(/^([\s\S]*?export const \w+ = )(\{[\s\S]*\});\s*$/);
   const data = JSON.parse(m[2]);
   data.spawns = (data.spawns ?? []).filter((s) => s.type !== 'graycoin');

@@ -112,5 +112,6 @@ export function makeAkihabara() {
   ground(211, 263);
   l.goal = { tx: 240, ty: G - 1 };
 
+  spawn('graycoin', 106, 18); // グレイコイン（tools/place_coins.mjs）
   return l.toData();
 }

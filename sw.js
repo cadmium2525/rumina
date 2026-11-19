@@ -1,9 +1,9 @@
 // オフライン用 Service Worker。ファイルを更新したら VERSION を上げる
-const VERSION = 'rumina-v30';
+const VERSION = 'rumina-v31';
 const ASSETS = [
   './', 'index.html', 'style.css', 'manifest.webmanifest',
   'js/main.js', 'js/player.js', 'js/smw_tables.js', 'js/sprites.js', 'js/rumina_frames.js',
-  'js/level.js', 'js/level_view.js', 'js/darkness.js', 'js/input.js', 'js/sfx.js',
+  'js/level.js', 'js/level_view.js', 'js/darkness.js', 'js/title.js', 'js/graycoin_art.js', 'js/input.js', 'js/sfx.js',
   'js/world.js', 'js/actors.js', 'js/art.js', 'js/haptics.js',
   'editor.html', 'editor.css', 'js/editor.js', 'js/stages/akihabara.js', 'js/stages/index.js', 'js/stages/stage1_2.js', 'js/stages/stage1_3.js', 'js/stages/stage1_4.js', 'js/stages/stage1_5.js', 'js/stages/stage1_5b.js',
   'js/stages/stage2_1.js', 'js/stages/stage2_2.js', 'js/stages/stage2_3.js', 'js/stages/stage2_4.js', 'js/stages/stage2_5.js', 'js/stages/stage2_5b.js',
