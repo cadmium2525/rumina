@@ -38,8 +38,12 @@ const finishReveal = (ow) => { for (let f = 0; f < 2000 && ow.reveal.length; f++
   // 今あるステージ（1-1〜3-5）は全部地図にある
   const onMap = new Set(Object.values(OW_MAPS).flatMap((m) => Object.values(m.nodes)).map((n) => n.stage));
   for (const id of playable) assert.ok(onMap.has(id), `${id} is on the map`);
-  // ボス部屋はお城のクリアになる
-  for (const s of STAGES.filter((s) => s.hidden)) assert.equal(s.credit, s.id.replace('B', ''));
+  // ボス部屋はお城のクリアになる。最終コースは LAST、ルミナの家は地図の家の点から入る
+  for (const s of STAGES.filter((s) => s.hidden)) {
+    if (s.id.endsWith('B')) assert.equal(s.credit, s.id.replace('B', ''));
+    else if (s.id.startsWith('LAST-')) assert.equal(s.credit, 'LAST');
+    else assert.ok(s.id === 'HOME' && s.onMap && OW_MAPS.w1.nodes.S.home === 'HOME', s.id);
+  }
 }
 {
   // はじめ：ルミナの家。道は家と 1-1 の間だけ。1-1 に入れる

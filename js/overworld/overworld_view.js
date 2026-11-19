@@ -322,6 +322,27 @@ export class OverworldView {
       g.fillRect(X + 7, Y + 10, 3, 4);
       g.fillStyle = '#ffe070';
       g.fillRect(X + 4, Y + 8, 2, 2);
+      if (ow.homeOpen?.(n)) {
+        // 入れるようになった：古びたドアのすき間から光がもれる
+        const a = 0.5 + 0.5 * Math.sin(frame / 8);
+        g.save();
+        g.globalAlpha = 0.35 + a * 0.5;
+        g.fillStyle = '#fff4a0';
+        g.fillRect(X + 6, Y + 9, 5, 6);
+        g.globalAlpha = 0.25 * a;
+        g.beginPath();
+        g.arc(X + 8, Y + 12, 7, 0, Math.PI * 2);
+        g.fill();
+        g.restore();
+      }
+      if (n.last && ow.isCleared(n.last)) {
+        // 最終コースをクリアした：屋根の上に星
+        g.fillStyle = '#ffe070';
+        g.fillRect(X + 7, Y - 6, 2, 6);
+        g.fillRect(X + 5, Y - 4, 6, 2);
+        g.fillStyle = '#ffffff';
+        g.fillRect(X + 7, Y - 4, 2, 2);
+      }
       return;
     }
     if (n.warp) {
@@ -507,6 +528,8 @@ export class OverworldView {
       sub = ow.isSoon(n) ? '準備中' : ow.isCleared(n.stage) ? 'クリア！  B ではいる' : 'B ではいる';
     } else if (n.warp) {
       sub = ow.canWarp() ? 'B でワープ' : '';
+    } else if (n.home && ow.homeOpen(n)) {
+      sub = ow.isCleared(n.last) ? '★ クリア！  B ではいる' : '古びたドアが… B ではいる';
     }
     g.fillStyle = 'rgba(28,20,36,0.82)';
     g.fillRect(0, SCREEN_H - 20, SCREEN_W, 20);

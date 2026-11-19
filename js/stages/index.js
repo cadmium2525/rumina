@@ -69,6 +69,10 @@ import { STAGE_E7 } from './stage_e7.js';
 import { STAGE_E8 } from './stage_e8.js';
 import { STAGE_E9 } from './stage_e9.js';
 import { STAGE_E10 } from './stage_e10.js';
+import { STAGE_HOME } from './stage_home.js';
+import { STAGE_LAST1 } from './stage_last1.js';
+import { STAGE_LAST2 } from './stage_last2.js';
+import { STAGE_LAST3 } from './stage_last3.js';
 
 export const STAGES = [
   { id: '1-1', make: makeAkihabara },
@@ -140,5 +144,11 @@ export const STAGES = [
   { id: 'E-8', make: () => STAGE_E8 },
   { id: 'E-9', make: () => STAGE_E9 },
   { id: 'E-10', make: () => STAGE_E10,
-    ending: ['ほしの道を ぜんぶ 走りきった！', 'ルミナは ほんとうの 光の少女だね。', 'あそんでくれて ありがとう！'] }, // エクストラの最後
+    ending: ['ほしの道を ぜんぶ 走りきった！', 'ルミナは ほんとうの 光の少女だね。', '地図の ルミナの家に 何かが…'] }, // エクストラの最後
+  // ルミナの家（E-10 をクリアすると地図の家から入れる）と、古びたドアの先の最終コース（3 区間。クリアの記録は LAST）
+  { id: 'HOME', make: () => STAGE_HOME, hidden: true, onMap: true },
+  { id: 'LAST-1', make: () => STAGE_LAST1, hidden: true, credit: 'LAST' },
+  { id: 'LAST-2', make: () => STAGE_LAST2, hidden: true, credit: 'LAST' },
+  { id: 'LAST-3', make: () => STAGE_LAST3, hidden: true, credit: 'LAST',
+    ending: ['すべての 道を 走りきった！', 'ルミナの 光は もう だれにも 消せない。', 'ほんとうに おめでとう！ ★'] },
 ];

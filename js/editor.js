@@ -60,6 +60,10 @@ const PALETTE = [
     tile(T.BOSS_DOOR_TOP, 'ボス扉（上）'), tile(T.BOSS_DOOR, 'ボス扉（下。置くと行き先を入力。↑で入る）'),
   ]],
   ['空', [tile(T.CLOUD, '雲（上からだけ乗れる）')]],
+  ['家', [
+    tile(T.WOOD_FLOOR, '木の床'), tile(T.WOOD_WALL, '木の壁'),
+    tile(T.OLD_DOOR_TOP, '古びたドア（上）'), tile(T.OLD_DOOR, '古びたドア（下。置くと行き先を入力。↑で入る）'),
+  ]],
   ['宇宙', [
     tile(T.STAR_BLOCK, 'ほしのブロック'),
     tile(T.STAR_LEDGE, 'ほしの足場（上からだけ乗れる）'),
@@ -189,7 +193,7 @@ function apply(tx, ty, b = brush) {
     level.set(tx, ty, b.t);
     if (b.t === T.QUESTION && b.item) level.contents.set(key(tx, ty), b.item);
     else level.contents.delete(key(tx, ty));
-    if (b.t === T.BOSS_DOOR) {
+    if (b.t === T.BOSS_DOOR || b.t === T.OLD_DOOR) {
       // 行き先のステージ（例 1-5B）。空なら、入るとクリア
       const to = prompt('ボス扉の行き先のステージ（例: 1-5B。空なら入るとクリア）', level.doorTo);
       if (to !== null) level.doorTo = to.trim();

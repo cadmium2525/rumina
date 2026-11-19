@@ -1184,3 +1184,83 @@ export const STAR_LEDGE = [
   '................',
   '................',
 ];
+
+// ---- ルミナの家（最終コース） ----
+// 古びたドア：色あせた木、さびた金具（h）、小窓（y はもれる光）、下のすき間から光
+export const PAL_HOUSE = { K: '#2a1810', D: '#8a6440', d: '#6a4a2e', h: '#6a6a72', y: '#fff0a0', l: '#e8c890', W: '#c89a60', w: '#a07848' };
+// 古びたドア（上）
+export const OLD_DOOR_TOP = [
+  '.KKKKKKKKKKKKKK.',
+  'KKddDDDDDDDDddKK',
+  'KdDDdDDDDDDdDDdK',
+  'KdDDDdDDDDdDDDdK',
+  'KdDDDDKKKKDDDDdK',
+  'KdDDDKyyyyKDDDdK',
+  'KdDDDKyKKyKDDDdK',
+  'KdDDDKyyyyKDDDdK',
+  'KdDDDDKKKKDDDDdK',
+  'KhhhDDDDDDDDhhhK',
+  'KhKhDDDdDDDDhKhK',
+  'KhhhDDDDDdDDhhhK',
+  'KdDDDDdDDDDDDDdK',
+  'KdDDDDDDDDDdDDdK',
+  'KdDdDDDDDDDDDDdK',
+  'KdDDDDDDDDDDDDdK',
+];
+// 古びたドア（下）
+export const OLD_DOOR = [
+  'KdDDDDDDDDDDDDdK',
+  'KdDDDDDDDDDDDDdK',
+  'KdDDDDDDDDDDhhdK',
+  'KdDDdDDDDDDhKhdK',
+  'KdDDDDDDDDDDhhdK',
+  'KhhhDDDDDDDDDDdK',
+  'KhKhDDDDDdDDDDdK',
+  'KhhhDDDDDDDDDDdK',
+  'KdDDDDDDDDDDDDdK',
+  'KdDDDDDDdDDDDDdK',
+  'KdDDDDDDDDDDDDdK',
+  'KdDdDDDDDDDDDDdK',
+  'KdDDDDDDDDDDDDdK',
+  'KdDDDDDDDDDDDDdK',
+  'KyyyyyyyyyyyyyyK',
+  'KKKKKKKKKKKKKKKK',
+];
+// 木の床（固い）
+export const WOOD_FLOOR = [
+  'KKKKKKKKKKKKKKKK',
+  'lllllllKlllllllK',
+  'WWWWWWWKWWWWWWWK',
+  'WWwWWWWKWWWWwWWK',
+  'wwwwwwwKwwwwwwwK',
+  'KKKKKKKKKKKKKKKK',
+  'llKllllllllllllK',
+  'WWKWWWWWWWWWWWWK',
+  'WWKWWWwWWWWWWWWK',
+  'wwKwwwwwwwwwwwwK',
+  'KKKKKKKKKKKKKKKK',
+  'lllllllllllKlllK',
+  'WWWWWWWWWWWKWWWK',
+  'WWWWwWWWWWWKWWWK',
+  'wwwwwwwwwwwKwwwK',
+  'KKKKKKKKKKKKKKKK',
+];
+// 木の壁（固い）
+export const WOOD_WALL = [
+  'KWWWWWWKKWWWWWWK',
+  'KWlWWWWKKWlWWWWK',
+  'KWWWWwWKKWWWWwWK',
+  'KWWWWWWKKWWWWWWK',
+  'KWwWWWWKKWwWWWWK',
+  'KWWWWWWKKWWWWWWK',
+  'KWWWwWWKKWWWwWWK',
+  'KWWWWWWKKWWWWWWK',
+  'KWWWWWWKKWWWWWWK',
+  'KWlWWWWKKWlWWWWK',
+  'KWWWWwWKKWWWWwWK',
+  'KWWWWWWKKWWWWWWK',
+  'KWwWWWWKKWwWWWWK',
+  'KWWWWWWKKWWWWWWK',
+  'KWWWwWWKKWWWwWWK',
+  'KWWWWWWKKWWWWWWK',
+];

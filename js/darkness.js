@@ -57,6 +57,7 @@ export class Darkness {
         if (t === TILE.TORCH) out.push([x, y - 2, 48 + flick(tx)]);
         else if (t === TILE.LAVA && lv.tileAt(tx, ty - 1) !== TILE.LAVA) out.push([x, y - 4, 22]);
         else if (t === TILE.CRYSTAL || t === TILE.NEON) out.push([x, y, 20]);
+        else if (t === TILE.OLD_DOOR) out.push([x, y - 8, 34]); // 古びたドアのすき間の光
       }
     }
     return out;

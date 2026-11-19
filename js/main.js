@@ -49,7 +49,8 @@ let levelData = DIRECT ? chooseLevel() : null;
 let world = DIRECT ? new World(levelData) : null;
 
 // ---- 地図 ----
-const PLAYABLE = STAGES.filter((s) => !s.hidden).map((s) => s.id);
+// 地図から入れるステージ（ふつうのステージと、地図の点から入る隠しステージ＝ルミナの家）
+const PLAYABLE = STAGES.filter((s) => !s.hidden || s.onMap).map((s) => s.id);
 const TITLES = Object.fromEntries(STAGES.filter((s) => !s.hidden).map((s) => [s.id, s.make().title || s.id]));
 const owView = new OverworldView(sprite);
 function makeOverworld() {

@@ -231,9 +231,17 @@ export class Overworld {
     }
   }
 
+  // ルミナの家に入れるか（エクストラの最後をクリアした後）
+  homeOpen(n = this.node()) { return !!n.home && this.stageIds.has(n.home) && this.isCleared(n.unlock); }
+
   // 点に入る：ステージなら { play }、ワープなら別の地図へ
   enter() {
     const n = this.node();
+    if (n.home) {
+      if (!this.homeOpen(n)) return null;
+      this.events.push('enter');
+      return { play: n.home };
+    }
     if (n.stage) {
       if (this.isSoon(n)) {
         this.events.push('bump');
@@ -276,6 +284,10 @@ export class Overworld {
         if (!n.stage || !this.stageIds.has(n.stage)) continue;
         exits.push(n.stage);
         if (n.hidden && this.stageIds.has(m.nodes[n.from].stage)) exits.push(`${m.nodes[n.from].stage}*`);
+      }
+      // ルミナの家の最終コース
+      for (const n of Object.values(m.nodes)) {
+        if (n.home && this.stageIds.has(n.home)) exits.push(n.last);
       }
     }
     return { done: exits.filter((e) => this.isCleared(e)).length, total: exits.length };

@@ -47,11 +47,13 @@ export const TILE = {
   SHADOW_BLOCK: 81, SHADOW_LEDGE: 82,
   // 宇宙（エクストラ ほしの道）：ほしのブロック（固い）と、上からだけ乗れるほしの足場
   STAR_BLOCK: 83, STAR_LEDGE: 84,
+  // ルミナの家：古びたドア（上と下の 2 マス。ボス扉と同じく、前に立って ↑ で入る）と、木の床・木の壁（固い）
+  OLD_DOOR_TOP: 85, OLD_DOOR: 86, WOOD_FLOOR: 87, WOOD_WALL: 88,
 };
-export const isDoor = (t) => t === TILE.BOSS_DOOR || t === TILE.BOSS_DOOR_TOP;
+export const isDoor = (t) => t === TILE.BOSS_DOOR || t === TILE.BOSS_DOOR_TOP || t === TILE.OLD_DOOR || t === TILE.OLD_DOOR_TOP;
 export const TILE_COUNT = 96;
 // テーマ（背景と地面・坂の見た目）
-export const THEMES = ['grass', 'cave', 'ruins', 'castle', 'akiba', 'sky', 'neon', 'volcano', 'dark', 'space'];
+export const THEMES = ['grass', 'cave', 'ruins', 'castle', 'akiba', 'sky', 'neon', 'volcano', 'dark', 'space', 'house'];
 // 使っている坂：ゆるい右上がり (k8,k9)・ゆるい右下がり (k10,k11)・45°右上がり (k12)・45°右下がり (k13)
 export const SLOPE_K = {
   UP_G1: 8, UP_G2: 9, DOWN_G1: 10, DOWN_G2: 11, UP_45: 12, DOWN_45: 13,
@@ -63,7 +65,7 @@ const SOLID = new Array(TILE_COUNT).fill(false);
 for (const t of [TILE.GROUND, TILE.STONE, TILE.TURN, TILE.QUESTION, TILE.USED, TILE.CAVE_ROCK,
   TILE.RUIN_BRICK, TILE.RUIN_BLOCK, TILE.CASTLE_BRICK, TILE.CASTLE_BLOCK, TILE.SPIKE,
   TILE.SPIKE_DOWN, TILE.DUCT_TL, TILE.DUCT_TR, TILE.DUCT_L, TILE.DUCT_R, TILE.CONCRETE, TILE.MESSAGE,
-  TILE.CANNON, TILE.NOTE, TILE.BASALT, TILE.SHADOW_BLOCK, TILE.STAR_BLOCK]) SOLID[t] = true;
+  TILE.CANNON, TILE.NOTE, TILE.BASALT, TILE.SHADOW_BLOCK, TILE.STAR_BLOCK, TILE.WOOD_FLOOR, TILE.WOOD_WALL]) SOLID[t] = true;
 // 足元だけ固い（上から乗れる）
 const FLOOR = SOLID.slice();
 for (const t of [TILE.LEDGE, TILE.CAVE_LEDGE, TILE.RUIN_LEDGE, TILE.CASTLE_LEDGE, TILE.RAIL, TILE.CLOUD, TILE.NEON_LEDGE, TILE.BASALT_LEDGE, TILE.SHADOW_LEDGE, TILE.STAR_LEDGE]) FLOOR[t] = true;

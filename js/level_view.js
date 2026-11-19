@@ -87,6 +87,8 @@ const THEME_PAL = {
   dark: { ...TILE_PAL, K: '#08050e', l: '#9a7ad8', G: '#3a2c50', g: '#2a2040', D: '#1e1830', d: '#151020', e: '#2c2444' },
   // 宇宙：光る水色のふちの、星の結晶の地面
   space: { ...TILE_PAL, K: '#06061a', l: '#a0e8ff', G: '#3a4a9a', g: '#2a3478', D: '#1a2052', d: '#12183a', e: '#2a3a80' },
+  // 家の中：木の色
+  house: { ...TILE_PAL, K: '#2a1810', l: '#e8c890', G: '#c89a60', g: '#a07848', D: '#8a6440', d: '#6a4a2e', e: '#b08858' },
 };
 // テーマごとの背景
 const SKY = {
@@ -100,6 +102,7 @@ const SKY = {
   volcano: ['#1a0610', '#8a2a10'],
   dark: ['#05030c', '#24103a'],
   space: ['#020210', '#141050'],
+  house: ['#f0e2c4', '#e2cca4'],
 };
 // 1 枚絵のタイル（テーマによらない）
 const STAGE_TILES = {
@@ -185,6 +188,7 @@ export class LevelView {
     this.stage[TILE.SHADOW_LEDGE] = gridToCanvas(ART.SHADOW_LEDGE, ART.PAL_DARK);
     this.stage[TILE.STAR_BLOCK] = gridToCanvas(ART.STAR_BLOCK, ART.PAL_SPACE);
     this.stage[TILE.STAR_LEDGE] = gridToCanvas(ART.STAR_LEDGE, ART.PAL_SPACE);
+    for (const name of ['OLD_DOOR_TOP', 'OLD_DOOR', 'WOOD_FLOOR', 'WOOD_WALL']) this.stage[TILE[name]] = gridToCanvas(ART[name], ART.PAL_HOUSE);
     this.torch = [ART.TORCH_A, ART.TORCH_B].map((f) => gridToCanvas(f, PAL_STAGE));
     this.lavaTop = gridToCanvas(ART.LAVA_TOP, PAL_STAGE);
     this.lava = gridToCanvas(ART.LAVA, PAL_STAGE);
@@ -394,6 +398,83 @@ export class LevelView {
       for (let px = 10; px < 512; px += 64) g.fillRect(px, 176, 10, 48);
       g.fillStyle = '#5a4a8a';
       g.fillRect(0, 166, 512, 2);
+    } else if (name === 'house') {
+      // ルミナの家の中：花がらの壁紙、夜空の見える窓、本だな、ベッド、ランプの置いた小さな机、額の絵
+      g.fillStyle = '#f0e2c4';
+      g.fillRect(0, 0, 512, 224);
+      for (let y = 6; y < 224; y += 16) {
+        for (let x = (y / 16) % 2 ? 0 : 8; x < 512; x += 16) {
+          g.fillStyle = '#e4cfa8';
+          g.fillRect(x + 3, y, 3, 3);
+          g.fillStyle = '#d8b8c8';
+          g.fillRect(x + 4, y + 1, 1, 1);
+        }
+      }
+      g.fillStyle = '#c8a070';
+      g.fillRect(0, 170, 512, 6); // 腰板の上の線
+      g.fillStyle = '#b08858';
+      g.fillRect(0, 176, 512, 48);
+      // 窓（夜空と星と月）
+      const win = (x, y) => {
+        g.fillStyle = '#5a3a20';
+        g.fillRect(x - 3, y - 3, 46, 50);
+        g.fillStyle = '#1a2050';
+        g.fillRect(x, y, 40, 44);
+        g.fillStyle = '#fff4c0';
+        g.beginPath();
+        g.arc(x + 28, y + 12, 6, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = '#ffffff';
+        for (const [sx, sy] of [[6, 8], [14, 26], [32, 34], [8, 36], [20, 6]]) g.fillRect(x + sx, y + sy, 1, 1);
+        g.fillStyle = '#5a3a20';
+        g.fillRect(x + 19, y, 2, 44);
+        g.fillRect(x, y + 21, 40, 2);
+        g.fillStyle = '#e88aa0';
+        g.fillRect(x - 6, y - 4, 8, 54); // カーテン
+        g.fillRect(x + 38, y - 4, 8, 54);
+      };
+      // 部屋は 1 画面（左右の壁 0〜16px・240〜256px、古びたドアは 192〜224px）
+      win(28, 66);
+      win(300, 70);
+      // ベッド
+      g.fillStyle = '#6a4228';
+      g.fillRect(80, 130, 6, 46);
+      g.fillRect(142, 146, 6, 30);
+      g.fillStyle = '#ffffff';
+      g.fillRect(86, 150, 56, 14);
+      g.fillStyle = '#7ab0e8';
+      g.fillRect(100, 146, 42, 18);
+      g.fillStyle = '#fff8e0';
+      g.fillRect(88, 142, 14, 8); // まくら
+      // 本だな
+      g.fillStyle = '#6a4228';
+      g.fillRect(152, 96, 36, 80);
+      for (let r = 0; r < 4; r++) {
+        g.fillStyle = '#4a2a18';
+        g.fillRect(155, 100 + r * 19, 30, 15);
+        for (let i = 0; i < 5; i++) {
+          g.fillStyle = ['#c84a4a', '#4a7ac8', '#e8c040', '#5aa85a', '#9a5ac8'][(i + r) % 5];
+          g.fillRect(157 + i * 6, 102 + r * 19 + (i % 2), 4, 13 - (i % 2));
+        }
+      }
+      // 机とランプ
+      g.fillStyle = '#6a4228';
+      g.fillRect(380, 150, 44, 5);
+      g.fillRect(384, 155, 4, 21);
+      g.fillRect(416, 155, 4, 21);
+      g.fillStyle = '#ffe070';
+      g.fillRect(396, 132, 12, 10);
+      g.fillStyle = '#c8a070';
+      g.fillRect(400, 142, 4, 8);
+      // 額の絵（光の玉）
+      g.fillStyle = '#c8a040';
+      g.fillRect(450, 90, 34, 28);
+      g.fillStyle = '#2a3a70';
+      g.fillRect(453, 93, 28, 22);
+      g.fillStyle = '#fff4b0';
+      g.beginPath();
+      g.arc(467, 104, 6, 0, Math.PI * 2);
+      g.fill();
     } else if (name === 'space') {
       // 宇宙：たくさんの星、むらさきと青の星雲、輪のある惑星、流れ星
       for (let i = 0; i < 6; i++) {
