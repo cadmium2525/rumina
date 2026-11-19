@@ -98,4 +98,14 @@ export const sfx = {
     noise(0.25, 0.1);
     tone('sine', 700, 200, 0.2, 0.05);
   },
+  // 音符ブロックで跳ねた：ポーンと上がる音
+  note() {
+    tone('triangle', 392, 784, 0.12, 0.1);
+    setTimeout(() => tone('square', 784, 1046, 0.1, 0.05), 60);
+  },
+  // ネオンの王の電撃
+  shock() {
+    noise(0.18, 0.1);
+    tone('sawtooth', 1200, 300, 0.18, 0.06);
+  },
 };

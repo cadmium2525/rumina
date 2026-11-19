@@ -107,7 +107,7 @@ let showDebug = false;
 // ゲーム内イベント → 効果音と触覚フィードバック
 const HAPTIC_OF = {
   break: 'medium', shatter: 'medium', bounce: 'medium', shrink: 'heavy', die: 'heavy', grow: 'medium',
-  goal: 'heavy', tape: 'medium', bossdown: 'heavy', door: 'medium', message: 'light', cannon: 'light', bump: 'light', grab: 'light', throw: 'light', kick: 'light', splash: 'light',
+  goal: 'heavy', tape: 'medium', bossdown: 'heavy', door: 'medium', message: 'light', cannon: 'light', bump: 'light', grab: 'light', throw: 'light', kick: 'light', splash: 'light', note: 'light', shock: 'medium',
 };
 
 const MAP_SOUND = { bump: 'bump', enter: 'door', warp: 'door', reveal: 'reveal' };

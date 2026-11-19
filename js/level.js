@@ -39,11 +39,13 @@ export const TILE = {
   BOSS_DOOR_TOP: 74, BOSS_DOOR: 75,
   // 空（ワールド 5）：上からだけ乗れる雲
   CLOUD: 76,
+  // ネオンの街（ワールド 6）：音符ブロック（乗ると跳ねる。SMW の Map16 0x115）と、上からだけ乗れるネオンの足場
+  NOTE: 77, NEON_LEDGE: 78,
 };
 export const isDoor = (t) => t === TILE.BOSS_DOOR || t === TILE.BOSS_DOOR_TOP;
 export const TILE_COUNT = 96;
 // テーマ（背景と地面・坂の見た目）
-export const THEMES = ['grass', 'cave', 'ruins', 'castle', 'akiba', 'sky'];
+export const THEMES = ['grass', 'cave', 'ruins', 'castle', 'akiba', 'sky', 'neon'];
 // 使っている坂：ゆるい右上がり (k8,k9)・ゆるい右下がり (k10,k11)・45°右上がり (k12)・45°右下がり (k13)
 export const SLOPE_K = {
   UP_G1: 8, UP_G2: 9, DOWN_G1: 10, DOWN_G2: 11, UP_45: 12, DOWN_45: 13,
@@ -55,10 +57,10 @@ const SOLID = new Array(TILE_COUNT).fill(false);
 for (const t of [TILE.GROUND, TILE.STONE, TILE.TURN, TILE.QUESTION, TILE.USED, TILE.CAVE_ROCK,
   TILE.RUIN_BRICK, TILE.RUIN_BLOCK, TILE.CASTLE_BRICK, TILE.CASTLE_BLOCK, TILE.SPIKE,
   TILE.SPIKE_DOWN, TILE.DUCT_TL, TILE.DUCT_TR, TILE.DUCT_L, TILE.DUCT_R, TILE.CONCRETE, TILE.MESSAGE,
-  TILE.CANNON]) SOLID[t] = true;
+  TILE.CANNON, TILE.NOTE]) SOLID[t] = true;
 // 足元だけ固い（上から乗れる）
 const FLOOR = SOLID.slice();
-for (const t of [TILE.LEDGE, TILE.CAVE_LEDGE, TILE.RUIN_LEDGE, TILE.CASTLE_LEDGE, TILE.RAIL, TILE.CLOUD]) FLOOR[t] = true;
+for (const t of [TILE.LEDGE, TILE.CAVE_LEDGE, TILE.RUIN_LEDGE, TILE.CASTLE_LEDGE, TILE.RAIL, TILE.CLOUD, TILE.NEON_LEDGE]) FLOOR[t] = true;
 // 触れるとダメージを受けるブロック
 export const isHurtBlock = (t) => t === TILE.SPIKE || t === TILE.SPIKE_DOWN;
 // 上からだけ乗れる足場か
@@ -75,9 +77,15 @@ export const isCeilingSlope = (t) => isSlope(t) && slopeK(t) >= 18 && slopeK(t) 
 const BOUNCE_OFFSETS = [-4, -7, -8, -9, -8, -6, -3, 0];
 // 叩かれてから元のブロックに戻るまで（bounce_spr07_spinning_turn_block_despawn_timer = 0xFF）
 const SPIN_TIME = 256;
+// 音符ブロック (BounceSpr01_TurnBlock の向き 0 = 下から叩いた / 3 = 上に乗った)。
+// 跳ねる速さの初め (kSpawnBounceSprite_BlockBounceYSpeed) と、毎フレームの加速 (kBounceSpr01_TurnBlock_YAcceleration)
+export const NOTE_YSPEED = { 0: -0x40, 3: 0x40 };
+export const NOTE_YACCEL = { 0: 0x10, 3: -0x10 };
+export const NOTE_TIME = 8;          // bounce_spr_timer
+export const NOTE_LAUNCH = -96;      // 跳ね終わりのルミナの速さ (player_yspeed = -96)
 
 // ステージに置ける敵・物
-export const SPAWN_TYPES = ['gift', 'shell', 'spiker', 'capsule', 'robo', 'drone', 'spark', 'boss', 'boss2', 'boss3', 'boss4', 'boss5'];
+export const SPAWN_TYPES = ['gift', 'shell', 'spiker', 'capsule', 'robo', 'drone', 'spark', 'boss', 'boss2', 'boss3', 'boss4', 'boss5', 'boss6'];
 
 export const MIN_WIDTH = 16;
 export const MAX_WIDTH = 1024;
@@ -86,6 +94,7 @@ export class Level {
   // data: エディタで作ったステージ (toData() の形式)。無ければ標準のテストステージ
   constructor(data = null) {
     this.bounces = []; // 叩かれたターンブロック {tx, ty, t}
+    this.notes = [];   // 跳ねている音符ブロック {tx, ty, dir, timer, status, off, ys}（バウンドスプライト）
     this.spawns = [];  // {type: 'gift' | 'shell' | 'spiker', x, y}
     this.contents = new Map(); // ？ブロックの中身 'tx,ty' → 'light'（光の玉）
     this.theme = 'grass';
@@ -321,7 +330,19 @@ export class Level {
     this.bounces.push({ tx, ty, t: 0 });
   }
 
+  // 音符ブロックが叩かれた・乗られた (CheckIfBlockWasHit → SpawnBounceSprite)。dir：0 下から / 3 上から。
+  // 跳ねている間（SMW では見えない固いブロックに置き換わっている間）は、もう一度は跳ねない
+  noteHit(tx, ty, dir) {
+    if (this.tileAt(tx, ty) !== TILE.NOTE || this.noteBouncing(tx, ty)) return false;
+    this.notes.push({ tx, ty, dir, timer: NOTE_TIME, status: 0, off: 0, ys: NOTE_YSPEED[dir] });
+    return true;
+  }
+
+  noteBouncing(tx, ty) { return this.notes.some((n) => n.tx === tx && n.ty === ty); }
+
   bounceOffset(tx, ty) {
+    const n = this.notes.find((e) => e.tx === tx && e.ty === ty);
+    if (n) return n.off;
     const b = this.bounces.find((e) => e.tx === tx && e.ty === ty);
     return b && b.t < BOUNCE_OFFSETS.length ? BOUNCE_OFFSETS[b.t] : 0;
   }

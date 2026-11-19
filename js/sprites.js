@@ -164,9 +164,13 @@ export class ActorSprites {
     const stone = { ...PAL_BOSS, p: '#b8b0a0', P: '#7a7064', n: '#463e36', c: '#ffb840', r: '#d07028', y: '#e0d8c8', Y: '#9a9080' };
     // そらの王：白と空色、金色の冠
     const sky = { ...PAL_BOSS, p: '#f4f8ff', P: '#a8c8f0', n: '#5a80c0', c: '#3a70e0', r: '#ff90c0', y: '#ffe070', Y: '#f0a830' };
+    // ネオンの王：濃い紺に桃色と水色のネオン
+    const neon = { ...PAL_BOSS, p: '#ff5ab8', P: '#3a2470', n: '#1a1038', c: '#70f4ff', r: '#70f4ff', y: '#ffe070', Y: '#ff8ad8' };
     this.bossSets = [null, this.boss, this.boss2, [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, dark)),
-      [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, stone)), [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, sky))];
-    this.bossBalls = [null, this.bossBall, this.boss2Ball, this.makeSpikeBall(dark), this.makeSpikeBall(stone), this.makeSpikeBall(sky)];
+      [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, stone)), [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, sky)),
+      [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, neon))];
+    this.bossBalls = [null, this.bossBall, this.boss2Ball, this.makeSpikeBall(dark), this.makeSpikeBall(stone), this.makeSpikeBall(sky),
+      this.makeSpikeBall(neon)];
     this.robo = [both(ROBO_A), both(ROBO_B)];
     this.drone = [both(DRONE_A), both(DRONE_B)];
     this.spark = [both(SPARK_A), both(SPARK_B)];
@@ -296,7 +300,32 @@ export class ActorSprites {
   }
 
   drawActor(g, a, frame, x, y) {
+    if (a.type === 'boss6') return this.drawBoss(g, { ...a, variant: 6, type: 'boss' }, frame, x, y);
     if (a.type === 'boss5') return this.drawBoss(g, { ...a, variant: 5, type: 'boss' }, frame, x, y);
+    if (a.type === 'shock') {
+      // 床を走る電撃：ジグザグの稲妻（水色と桃色が入れ替わる）
+      const f = (frame >> 1) & 1;
+      const pts = [[0, 14], [3, 7], [6, 12], [9, 4], [12, 11], [15, 6]];
+      g.save();
+      g.globalAlpha = 0.35;
+      g.fillStyle = f ? '#ff8ad8' : '#70f4ff';
+      g.fillRect(x, y + 4, 16, 12);
+      g.restore();
+      for (const [col, wdt] of [['#1a1038', 3], [f ? '#70f4ff' : '#ff8ad8', 2], ['#ffffff', 1]]) {
+        g.fillStyle = col;
+        for (let i = 0; i < pts.length - 1; i++) {
+          const [x0, y0] = pts[i];
+          const [x1, y1] = pts[i + 1];
+          const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+          for (let k = 0; k <= n; k++) {
+            const px = Math.round(x0 + ((x1 - x0) * k) / n);
+            const py = Math.round(y0 + ((y1 - y0) * k) / n) + (f ? 1 : 0);
+            g.fillRect(x + px - (wdt >> 1), y + py - (wdt >> 1), wdt, wdt);
+          }
+        }
+      }
+      return;
+    }
     if (a.type === 'boss4') return this.drawBoss(g, { ...a, variant: 4, type: 'boss' }, frame, x, y);
     if (a.type === 'rock') {
       // 落石：落ちる前は揺れる

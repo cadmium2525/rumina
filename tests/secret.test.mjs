@@ -10,7 +10,7 @@ const get = (id) => STAGES.find((s) => s.id === id);
 // ひみつのゴールがあるステージ = 地図で隠しコースの from になっているステージ
 const sources = Object.values(OW_MAPS).flatMap((m) => Object.values(m.nodes).filter((n) => n.hidden).map((n) => [m.nodes[n.from].stage, n.stage]));
 const ready = sources.filter(([src, h]) => get(src) && get(h));
-assert.deepEqual(ready, [['1-3', '1-S'], ['2-2', '2-S'], ['3-4', '3-S'], ['4-3', '4-S'], ['5-2', '5-S']]);
+assert.deepEqual(ready, [['1-3', '1-S'], ['2-2', '2-S'], ['3-4', '3-S'], ['4-3', '4-S'], ['5-2', '5-S'], ['6-2', '6-S']]);
 
 for (const [src, hid] of ready) {
   const main = new Level(get(src).make());

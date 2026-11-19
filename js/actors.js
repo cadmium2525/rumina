@@ -806,6 +806,7 @@ export class Boss extends Enemy {
     this.balls = 1;    // 一度に投げる玉の数
     this.baseRage = 0; // はじめの速さ（弱るほど速くなる）
     this.rocks = false; // 大ジャンプの着地で天井から落石を降らせる
+    this.shock = false; // 大ジャンプの着地で床を走る電撃を左右に出す
     this.state = 'walk';
     this.timer = 90;
     this.inv = 0;      // ダメージ後の無敵
@@ -847,6 +848,7 @@ export class Boss extends Enemy {
       // 大ジャンプの着地
       this.jumped = false;
       if (this.rocks && !this.dying) this.dropRocks(w);
+      if (this.shock && !this.dying && this.state !== 'shell') this.sendShock(w);
     }
     if (this.state === 'shell') {
       if (f.wall) {
@@ -905,6 +907,13 @@ export class Boss extends Enemy {
 
   kill() { if (this.w) this.damage(); }
 
+  // 床を走る電撃を左右に 1 つずつ（弱るほど速い）
+  sendShock(w) {
+    const rage = Math.min(4, this.maxHp - this.hp + this.baseRage);
+    for (const dir of [-1, 1]) w.actors.push(new Shock(this.x + dir * 12, this.y, dir, 0x18 + rage * 4));
+    w.emit('shock');
+  }
+
   // 天井から落石を 3 つ（ルミナのまわり。真上・少し前・少し後ろ）
   dropRocks(w) {
     const p = w.player;
@@ -917,6 +926,41 @@ export class Boss extends Enemy {
       w.actors.push(new FallingRock(x, Math.floor(y / 16) * 16, Math.abs(dx) * 0.8));
     }
     w.emit('bump');
+  }
+}
+
+// ネオンの王の電撃：床に沿って左右へ走る。壁や床の切れ目で消える。触れるとダメージ。
+// スピンジャンプで上から踏むと跳ね返れる（電気スパークと同じ）
+export class Shock extends Sprite {
+  constructor(x, y, dir, speed) {
+    super(x, y);
+    this.type = 'shock';
+    this.xs = dir * speed;
+    this.facing = dir > 0 ? 1 : 0;
+  }
+
+  get hitbox() { return { x: this.x + 2, y: this.y + 6, w: 12, h: 10 }; }
+
+  update(w) {
+    if (this.contactTimer) this.contactTimer--;
+    this.moveX();
+    const lv = w.level;
+    const front = this.x + (this.xs > 0 ? 15 : 0);
+    if (lv.solidPx(front, this.y + 8) || !lv.floorPx(this.x + 8, this.y + 16) || this.offscreen(w, 32)) {
+      this.dead = true;
+      return;
+    }
+    if (!this.contactTimer && touchesPlayer(w.player, this.hitbox)) {
+      this.contactTimer = 8;
+      const p = w.player;
+      if (p.spin && stompsFromAbove(p, this.hitbox, false)) {
+        p.boost();
+        w.star(p.xpos + 4, p.ypos + 0x1c);
+        w.emit('bounce');
+      } else if (p.hurt()) {
+        w.onPlayerHurt();
+      }
+    }
   }
 }
 
@@ -986,6 +1030,20 @@ export class Boss4 extends Boss {
     this.balls = 2;
     this.baseRage = 2;
     this.rocks = true;
+  }
+}
+
+// ネオンの王（ワールド 6 のボス）：7 回踏まないと倒れない。玉を 2 つ投げ、
+// 大ジャンプの着地で床を走る電撃を左右に出す（跳んでよける）
+export class Boss6 extends Boss {
+  constructor(x, y) {
+    super(x, y);
+    this.hp = 7;
+    this.maxHp = 7;
+    this.variant = 6;
+    this.balls = 2;
+    this.baseRage = 2;
+    this.shock = true;
   }
 }
 

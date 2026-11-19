@@ -81,6 +81,8 @@ export class Player {
     this.var8a = 0;         // 水に入っている判定点 (bit0 中心, bit1 頭, bit2 足)
     this.var8b = 0;         // ツタに触れている判定点 (bit0,3,4 中心, bit1 頭, bit2 足, bit3 横上, bit4 横下)
     this.onGround = 0;      // 地面・坂に触れた回数 ($13EF 系 player_on_ground_flag)
+    this.onSolidSprite = 0; // スプライトの上に乗っている (misc_player_on_solid_sprite。音符ブロックが跳ねている間)
+    this.noteFlag = 0;      // 音符ブロックで跳ねている (blocks_note_block_bounce_flag)
     this.animSpeedIndex = 0;
     this.walkFrame = 0;
     this.overrideWalk = 0;
@@ -390,7 +392,9 @@ export class Player {
       }
       if (hit) {
         this.animSpeedIndex = 3;
-        if ((x & 0xf) !== (hd ? 0xd : 2)) {
+        // 跳ねている音符ブロック（SMW では見えないブロック 0x152）は、跳ねている間は横から押し出さない (00EB9B 付近の LABEL_42)
+        const noteSide = this.noteFlag && level.noteBouncing(Math.floor(sx / 16), Math.floor(sy / 16));
+        if ((x & 0xf) !== (hd ? 0xd : 2) && !noteSide) {
           this.blocked |= hd ? 2 : 1;
           this.hurtBlock(level.tileAtPx(sx, sy)); // 00F120：トゲに横から触れた
         }
@@ -516,6 +520,8 @@ export class Player {
       return;
     }
     this.hurtBlock(level.tileAt(tx, ty)); // トゲの上に乗った
+    // 音符ブロックに乗った (00F120 → CheckIfBlockWasHit(a, 3))：跳ね始める（着地はそのまま続ける）
+    if (level.tileAt(tx, ty) === TILE.NOTE) this.env.noteBlock?.(tx, ty, 3);
     // 00EED1
     this.onGround++;
     this.ypos = u16(this.ypos - pib);
@@ -562,8 +568,13 @@ export class Player {
     this.stompCount = 0; // counter_consecutive_enemies_stomped
   }
 
-  // 00EE1D：足場がなければ落下状態にする
+  // 00EE1D：足場がなければ落下状態にする。
+  // ただしスプライトの上（跳ねている音符ブロックの上）で下りていなければ、平地に着地したことにする
   airCheck() {
+    if (this.onSolidSprite && !(this.yspeed & 0x80)) {
+      this.landed(SLOPE_FLAT);
+      return;
+    }
     if (!(this.inAir | (this.blocked & 4))) this.inAir = AIR_FALL;
   }
 

@@ -1021,3 +1021,43 @@ export const CLOUD = [
   '................',
   '................',
 ];
+
+// ---- ネオンの街（ワールド 6） ----
+// 音符ブロック（乗ると跳ねる）。暗いブロックに水色の音符、桃色のネオンの縁
+export const NOTE_BLOCK = [
+  '.KKKKKKKKKKKKKK.',
+  'KppppppppppppppK',
+  'KpnnnnnnnnnnnnPK',
+  'KpnnnnnnwcnnnnPK',
+  'KpnnnnnnwcccnnPK',
+  'KpnnnnnnwnccnnPK',
+  'KpnnnnnnwnnccnPK',
+  'KpnnnnnnwnnncnPK',
+  'KpnnnnnnwnnnnnPK',
+  'KpnnnccccnnnnnPK',
+  'KpnnccccwnnnnnPK',
+  'KpnncccccnnnnnPK',
+  'KpnnnCCCnnnnnnPK',
+  'KpnnnnnnnnnnnnPK',
+  'KPPPPPPPPPPPPPPK',
+  '.KKKKKKKKKKKKKK.',
+];
+// ネオンの足場（上からだけ乗れる）：光る管と支え
+export const NEON_LEDGE = [
+  'KKKKKKKKKKKKKKKK',
+  'KwwwwwwwwwwwwwwK',
+  'KccccccccccccccK',
+  'KCCCCCCCCCCCCCCK',
+  'KKKKKKKKKKKKKKKK',
+  '..KhK......KhK..',
+  '..KhK......KhK..',
+  '...K........K...',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+];

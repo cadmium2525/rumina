@@ -79,6 +79,8 @@ const THEME_PAL = {
   akiba: { ...TILE_PAL, K: '#1c1424', l: '#f0eef8', G: '#c8c4d8', g: '#9a96b0', D: '#5a5670', d: '#46425a', e: '#6c6884' },
   // 空：雲の地面（白と水色）
   sky: { ...TILE_PAL, K: '#5a70a8', l: '#ffffff', G: '#f4f8ff', g: '#c4d4f0', D: '#e6eefc', d: '#d0dcf4', e: '#ffffff' },
+  // ネオンの街：桃色のネオンの縁がついた、夜のアスファルト
+  neon: { ...TILE_PAL, K: '#0c0814', l: '#ff78c8', G: '#4a3a70', g: '#352a58', D: '#241c3c', d: '#1a142c', e: '#2e2650' },
 };
 // テーマごとの背景
 const SKY = {
@@ -88,6 +90,7 @@ const SKY = {
   castle: ['#18141e', '#302838'],
   akiba: ['#2a1c58', '#d86aa0'],
   sky: ['#3a80e8', '#bfe0ff'],
+  neon: ['#05031a', '#2c1258'],
 };
 // 1 枚絵のタイル（テーマによらない）
 const STAGE_TILES = {
@@ -103,6 +106,7 @@ const AKIBA_TILES = {
   [TILE.CONCRETE]: 'CONCRETE', [TILE.DUCT_TL]: 'DUCT_TL', [TILE.DUCT_TR]: 'DUCT_TR',
   [TILE.DUCT_L]: 'DUCT_L', [TILE.DUCT_R]: 'DUCT_R', [TILE.RAIL]: 'RAIL',
   [TILE.MESSAGE]: 'MESSAGE_BLOCK', [TILE.NEON]: 'NEON', [TILE.CANNON]: 'CANNON',
+  [TILE.NOTE]: 'NOTE_BLOCK', [TILE.NEON_LEDGE]: 'NEON_LEDGE',
 };
 // ツタ（上の端と途中）
 const VINE_TOP = [
@@ -375,6 +379,61 @@ export class LevelView {
       for (let px = 10; px < 512; px += 64) g.fillRect(px, 176, 10, 48);
       g.fillStyle = '#5a4a8a';
       g.fillRect(0, 166, 512, 2);
+    } else if (name === 'neon') {
+      // 夜のネオン街：星と月、遠くのビル（暗い影）と、手前のビルの光る窓・ネオンの看板
+      for (let i = 0; i < 70; i++) {
+        g.fillStyle = rnd() < 0.8 ? '#ffffff' : '#ffe8a0';
+        g.globalAlpha = 0.4 + rnd() * 0.6;
+        g.fillRect(Math.floor(rnd() * 512), Math.floor(rnd() * 110), 1, 1);
+      }
+      g.globalAlpha = 1;
+      g.fillStyle = '#fff4c8';
+      g.beginPath();
+      g.arc(400, 34, 12, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#05031a';
+      g.beginPath();
+      g.arc(406, 30, 11, 0, Math.PI * 2);
+      g.fill();
+      // 遠くのビル
+      let x = 0;
+      while (x < 512) {
+        const w = 24 + Math.floor(rnd() * 30);
+        const h = 90 + Math.floor(rnd() * 70);
+        g.fillStyle = '#150c34';
+        g.fillRect(x, 224 - h, w - 1, h);
+        if (rnd() < 0.4) g.fillRect(x + Math.floor(w / 2) - 1, 224 - h - 10, 2, 10); // アンテナ
+        x += w;
+      }
+      // 手前のビル
+      const sign = ['#ff5ab8', '#70f4ff', '#ffe46e', '#9effa0', '#b98aff'];
+      x = 0;
+      while (x < 512) {
+        const w = 36 + Math.floor(rnd() * 40);
+        const h = 50 + Math.floor(rnd() * 80);
+        const top = 224 - h;
+        g.fillStyle = '#241650';
+        g.fillRect(x, top, w - 3, h);
+        for (let wy = top + 6; wy < 216; wy += 8) {
+          for (let wx = x + 4; wx < x + w - 7; wx += 7) {
+            const r = rnd();
+            g.fillStyle = r < 0.25 ? '#70f4ff' : r < 0.45 ? '#ff9ad8' : r < 0.6 ? '#ffe8a0' : '#1a1040';
+            g.fillRect(wx, wy, 3, 4);
+          }
+        }
+        if (rnd() < 0.6) {
+          // 屋上の横長のネオン看板
+          const c = sign[Math.floor(rnd() * sign.length)];
+          const sw = Math.min(w - 8, 30);
+          g.fillStyle = '#0c0814';
+          g.fillRect(x + 2, top - 9, sw + 2, 9);
+          g.fillStyle = c;
+          g.fillRect(x + 3, top - 8, sw, 7);
+          g.fillStyle = '#0c0814';
+          for (let lx = x + 5; lx < x + sw; lx += 6) g.fillRect(lx, top - 6, 3, 3);
+        }
+        x += w;
+      }
     } else if (name === 'castle') {
       // 奥のレンガの壁と、柱
       g.fillStyle = '#2a2430';

@@ -60,6 +60,10 @@ const PALETTE = [
     tile(T.BOSS_DOOR_TOP, 'ボス扉（上）'), tile(T.BOSS_DOOR, 'ボス扉（下。置くと行き先を入力。↑で入る）'),
   ]],
   ['空', [tile(T.CLOUD, '雲（上からだけ乗れる）')]],
+  ['ネオン', [
+    tile(T.NOTE, '音符ブロック（乗ると跳ねる。B を押していると高く跳ぶ）'),
+    tile(T.NEON_LEDGE, 'ネオンの足場（上からだけ乗れる）'),
+  ]],
   ['電気街', [
     tile(T.CONCRETE, 'コンクリート'), tile(T.RAIL, '高架の線路（上からだけ乗れる）'),
     tile(T.DUCT_TL, 'ダクトの口（左）'), tile(T.DUCT_TR, 'ダクトの口（右）'),
@@ -84,6 +88,7 @@ const PALETTE = [
     { kind: 'spawn', type: 'boss3', name: 'ボス：やみの王（7 回踏むと倒れてクリア）' },
     { kind: 'spawn', type: 'boss4', name: 'ボス：いわの王（6 回踏むと倒れてクリア。落石を降らせる）' },
     { kind: 'spawn', type: 'boss5', name: 'ボス：そらの王（6 回踏むと倒れてクリア。空を飛ぶ）' },
+    { kind: 'spawn', type: 'boss6', name: 'ボス：ネオンの王（7 回踏むと倒れてクリア。床を走る電撃）' },
   ]],
   ['その他', [
     { kind: 'start', name: 'スタート位置' }, { kind: 'goal', name: 'ゴール（もう一度置くと移動）' },

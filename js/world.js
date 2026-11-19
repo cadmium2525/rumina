@@ -1,8 +1,8 @@
 // ゲーム世界：レベル・プレイヤー・スプライト・エフェクトをまとめて 1 フレーム進める。
 // DOM に依存しない（描画は main.js / *_view.js）。
 import { Player } from './player.js';
-import { Level, Camera, GROUND_Y, SCREEN_W, LEVEL_H, TILE, CAM_Y } from './level.js';
-import { GiftBox, Shell, Spiker, LightOrb, Goal, Capsule, Robo, Drone, Spark, Bullet, Boss, Boss2, Boss3, Boss4, Boss5 } from './actors.js';
+import { Level, Camera, GROUND_Y, SCREEN_W, LEVEL_H, TILE, CAM_Y, NOTE_YACCEL, NOTE_LAUNCH } from './level.js';
+import { GiftBox, Shell, Spiker, LightOrb, Goal, Capsule, Robo, Drone, Spark, Bullet, Boss, Boss2, Boss3, Boss4, Boss5, Boss6 } from './actors.js';
 import { SHOOTER_TIME, SHOOTER_NEAR } from './smw_tables.js';
 import { BRICK_X, BRICK_Y, BRICK_XSPEED, BRICK_YSPEED } from './smw_tables.js';
 
@@ -51,6 +51,7 @@ export class World {
       emit: (n) => this.emit(n),
       breakTile: (tx, ty) => this.breakTile(tx, ty),
       bumpTile: (tx, ty) => { this.hitTile(tx, ty); this.emit('bump'); },
+      noteBlock: (tx, ty, dir) => this.level.noteHit(tx, ty, dir),
     };
   }
 
@@ -58,6 +59,11 @@ export class World {
 
   // ブロックを叩いた（下から頭で・横から甲羅で）。？ブロックなら中身が出る
   hitTile(tx, ty) {
+    if (this.level.tileAt(tx, ty) === TILE.NOTE) {
+      // 音符ブロック：下から叩くと上に跳ねる（ルミナの速さは変わらない）
+      this.level.noteHit(tx, ty, 0);
+      return;
+    }
     if (this.level.tileAt(tx, ty) === TILE.MESSAGE) {
       // メッセージブロック：跳ねて文字が出る
       this.level.bounceTile(tx, ty);
@@ -144,6 +150,9 @@ export class World {
     // 縮む・大きくなる・ミスの演出中はゲームが止まる (flag_sprites_locked)
     if (this.player.locked) {
       this.player.update(pad, env);
+      // 止まっている間も 00C47E の終わりと ProcessNormalSprites は動くので、フラグは毎フレーム 0 に戻る
+      this.player.noteFlag = 0;
+      this.player.onSolidSprite = 0;
       return;
     }
 
@@ -151,6 +160,7 @@ export class World {
     this.camera.update(this.player, this.level.widthPx);
     env.camX = this.camera.x;
     this.player.update(pad, env);
+    this.player.noteFlag = 0; // GameMode14_InLevel_00C47E の終わり
     if (this.player.locked && this.player.carrying) this.onPlayerHurt();
     if (this.player.entering) {
       this.doorEntered = true;
@@ -161,6 +171,7 @@ export class World {
     this.player.smokeRequests.length = 0;
     this.waterEffects();
 
+    this.player.onSolidSprite = 0; // ProcessNormalSprites の始め
     this.updateSpawns();
     this.updateShooters();
     for (const a of this.actors) {
@@ -170,9 +181,41 @@ export class World {
     }
     this.actors = this.actors.filter((a) => !a.dead);
 
+    this.updateNotes();
     this.updateEffects();
     this.level.update();
     if (this.player.cleared) this.cleared = true;
+  }
+
+  // 音符ブロックの跳ね (ProcessBounceAndSmokeSprites → BounceSpr01_TurnBlock)。
+  // 上に乗った時 (向き 3)：8 フレームの間ブロックと一緒に沈んで戻り、その間ルミナはブロックの上に固定される。
+  // 最後に上向きの速さ -96 で跳ね上げる（B を押していると重力が弱いので高く跳ぶ）
+  updateNotes() {
+    const p = this.player;
+    for (const n of this.level.notes) {
+      if (n.timer) n.timer--;
+      if (!n.status) {
+        n.status = 1;
+        if (n.dir === 3) p.yspeed = 0; // kBounceSpr01_TurnBlock_DATA_0290D6[3] = 0
+      }
+      n.off += n.ys >> 4; // UpdateBounceSpritePosition_Y（速さは 16 の倍数なので端数は出ない）
+      n.ys += NOTE_YACCEL[n.dir];
+      if (n.dir === 3 && p.state === 0) {
+        p.ypos = (n.ty * 16 + n.off - 32) & 0xffff;
+        p.onSolidSprite = 1;
+        p.noteFlag = 1;
+        p.yspeed = 0;
+      }
+      if (!n.timer) {
+        if (n.dir === 3) {
+          p.yspeed = NOTE_LAUNCH & 0xff;
+          p.ypos = (p.ypos - 2) & 0xffff;
+          this.emit('note');
+        }
+        n.done = true;
+      }
+    }
+    this.level.notes = this.level.notes.filter((n) => !n.done);
   }
 
   // ProcessShooterSprites (02B387) → ShooterSpr01_BulletBillShooter (02B466)。
@@ -211,7 +254,7 @@ export class World {
       }
       if (p.state === 'used' && far) p.state = 'idle';
       if (p.state === 'idle' && near) {
-        const make = { gift: GiftBox, shell: Shell, spiker: Spiker, capsule: Capsule, robo: Robo, drone: Drone, spark: Spark, boss: Boss, boss2: Boss2, boss3: Boss3, boss4: Boss4, boss5: Boss5 }[p.type];
+        const make = { gift: GiftBox, shell: Shell, spiker: Spiker, capsule: Capsule, robo: Robo, drone: Drone, spark: Spark, boss: Boss, boss2: Boss2, boss3: Boss3, boss4: Boss4, boss5: Boss5, boss6: Boss6 }[p.type];
         const a = new make(p.x, p.y);
         if (a.type === 'spiker') a.facing = this.player.xpos > p.x ? 1 : 0;
         this.actors.push(a);
