@@ -162,9 +162,11 @@ export class ActorSprites {
     const dark = { ...PAL_BOSS, p: '#5a6a78', P: '#28303c', n: '#10141c', c: '#80ff90', r: '#b060ff', y: '#d0d8e8', Y: '#8890a8' };
     // いわの王：岩の灰色と琥珀色の目
     const stone = { ...PAL_BOSS, p: '#b8b0a0', P: '#7a7064', n: '#463e36', c: '#ffb840', r: '#d07028', y: '#e0d8c8', Y: '#9a9080' };
+    // そらの王：白と空色、金色の冠
+    const sky = { ...PAL_BOSS, p: '#f4f8ff', P: '#a8c8f0', n: '#5a80c0', c: '#3a70e0', r: '#ff90c0', y: '#ffe070', Y: '#f0a830' };
     this.bossSets = [null, this.boss, this.boss2, [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, dark)),
-      [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, stone))];
-    this.bossBalls = [null, this.bossBall, this.boss2Ball, this.makeSpikeBall(dark), this.makeSpikeBall(stone)];
+      [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, stone)), [BOSS_A, BOSS_B].map((f) => gridToCanvas(f, sky))];
+    this.bossBalls = [null, this.bossBall, this.boss2Ball, this.makeSpikeBall(dark), this.makeSpikeBall(stone), this.makeSpikeBall(sky)];
     this.robo = [both(ROBO_A), both(ROBO_B)];
     this.drone = [both(DRONE_A), both(DRONE_B)];
     this.spark = [both(SPARK_A), both(SPARK_B)];
@@ -268,6 +270,19 @@ export class ActorSprites {
       g.restore();
       return;
     }
+    if (a.variant === 5 && !a.onFloor && !a.dying) {
+      // そらの王：飛んでいる時は白い翼がはばたく
+      const up = (frame >> 3) & 1;
+      for (const side of [-1, 1]) {
+        const bx = side < 0 ? x - 14 : x + 22;
+        g.fillStyle = '#24141c';
+        g.fillRect(bx - 1, y - 10 + up * 3, 10, 7);
+        g.fillStyle = '#ffffff';
+        g.fillRect(bx, y - 9 + up * 3, 8, 5);
+        g.fillStyle = '#a8c8f0';
+        g.fillRect(side < 0 ? bx : bx + 4, y - 5 + up * 3, 4, 1);
+      }
+    }
     g.drawImage(this.bossSets[a.variant || 1][a.onFloor ? (frame >> 3) & 1 : 1], x - 8, y - 16);
   }
 
@@ -281,6 +296,7 @@ export class ActorSprites {
   }
 
   drawActor(g, a, frame, x, y) {
+    if (a.type === 'boss5') return this.drawBoss(g, { ...a, variant: 5, type: 'boss' }, frame, x, y);
     if (a.type === 'boss4') return this.drawBoss(g, { ...a, variant: 4, type: 'boss' }, frame, x, y);
     if (a.type === 'rock') {
       // 落石：落ちる前は揺れる

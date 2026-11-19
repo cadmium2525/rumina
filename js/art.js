@@ -999,3 +999,25 @@ export const BOSS_B = mirror([...BOSS_TOP,
   '.......KHHHHHK..',
   '.......KKKKKKK..',
 ]);
+
+// ---- 空（ワールド 5） ----
+export const PAL_SKY = { K: '#5a70a8', w: '#ffffff', s: '#e6eefc', S: '#c4d4f0' };
+// 雲の足場（上からだけ乗れる）。上半分がふくらんだ雲
+export const CLOUD = [
+  '....KKKK...KKK..',
+  '..KKwwwwK.KwwwK.',
+  '.KwwwwwwwKwwwwwK',
+  'KwwwwwwwwwwwwwwK',
+  'KwwwwwwwwwwwwwsK',
+  'KswwwwwwwwwwwssK',
+  '.KsswwwswwwsssK.',
+  '..KKssKKsssKKK..',
+  '....KK..KKK.....',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+];

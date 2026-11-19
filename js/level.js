@@ -37,11 +37,13 @@ export const TILE = {
   CANNON: 73,                                      // 砲台（砲弾を撃つ。SMW のキラー砲台）
   // ボス扉（上と下の 2 マス）。前に立って ↑ で入る（SMW の扉と同じ）
   BOSS_DOOR_TOP: 74, BOSS_DOOR: 75,
+  // 空（ワールド 5）：上からだけ乗れる雲
+  CLOUD: 76,
 };
 export const isDoor = (t) => t === TILE.BOSS_DOOR || t === TILE.BOSS_DOOR_TOP;
 export const TILE_COUNT = 96;
 // テーマ（背景と地面・坂の見た目）
-export const THEMES = ['grass', 'cave', 'ruins', 'castle', 'akiba'];
+export const THEMES = ['grass', 'cave', 'ruins', 'castle', 'akiba', 'sky'];
 // 使っている坂：ゆるい右上がり (k8,k9)・ゆるい右下がり (k10,k11)・45°右上がり (k12)・45°右下がり (k13)
 export const SLOPE_K = {
   UP_G1: 8, UP_G2: 9, DOWN_G1: 10, DOWN_G2: 11, UP_45: 12, DOWN_45: 13,
@@ -56,7 +58,7 @@ for (const t of [TILE.GROUND, TILE.STONE, TILE.TURN, TILE.QUESTION, TILE.USED, T
   TILE.CANNON]) SOLID[t] = true;
 // 足元だけ固い（上から乗れる）
 const FLOOR = SOLID.slice();
-for (const t of [TILE.LEDGE, TILE.CAVE_LEDGE, TILE.RUIN_LEDGE, TILE.CASTLE_LEDGE, TILE.RAIL]) FLOOR[t] = true;
+for (const t of [TILE.LEDGE, TILE.CAVE_LEDGE, TILE.RUIN_LEDGE, TILE.CASTLE_LEDGE, TILE.RAIL, TILE.CLOUD]) FLOOR[t] = true;
 // 触れるとダメージを受けるブロック
 export const isHurtBlock = (t) => t === TILE.SPIKE || t === TILE.SPIKE_DOWN;
 // 上からだけ乗れる足場か
@@ -75,7 +77,7 @@ const BOUNCE_OFFSETS = [-4, -7, -8, -9, -8, -6, -3, 0];
 const SPIN_TIME = 256;
 
 // ステージに置ける敵・物
-export const SPAWN_TYPES = ['gift', 'shell', 'spiker', 'capsule', 'robo', 'drone', 'spark', 'boss', 'boss2', 'boss3', 'boss4'];
+export const SPAWN_TYPES = ['gift', 'shell', 'spiker', 'capsule', 'robo', 'drone', 'spark', 'boss', 'boss2', 'boss3', 'boss4', 'boss5'];
 
 export const MIN_WIDTH = 16;
 export const MAX_WIDTH = 1024;

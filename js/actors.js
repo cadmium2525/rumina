@@ -989,6 +989,98 @@ export class Boss4 extends Boss {
   }
 }
 
+// そらの王（ワールド 5 のボス）：空を飛ぶ。ルミナの上を追いかけ、玉の雨を降らせるのと、
+// 急降下して床に降りる（しばらく休む）のを交互に行う。上から踏める。6 回で倒れる
+export class Boss5 extends Boss {
+  constructor(x, y) {
+    super(x, y);
+    this.hp = 6;
+    this.maxHp = 6;
+    this.variant = 5;
+    this.baseRage = 1;
+    this.state = 'rise';
+    this.t = 0;
+  }
+
+  update(w) {
+    this.w = w;
+    if (this.contactTimer) this.contactTimer--;
+    if (this.inv) this.inv--;
+    if (this.dying || this.state === 'shell') {
+      // やられた時・トゲの球の時は、ふつうの王と同じ（床を転がる）
+      if (this.state === 'shell' && !this.dying && this.timer <= 1) {
+        this.state = 'rise';
+        this.timer = 0;
+        return;
+      }
+      super.update(w);
+      return;
+    }
+    const p = w.player;
+    const rage = Math.min(4, this.maxHp - this.hp + this.baseRage);
+    this.t++;
+    // 飛ぶ高さ：床の上 4 マス半（床が見つからなければ今の高さ）
+    if (this.floorY === undefined) this.floorY = this.y;
+    const flyY = this.floorY - 72;
+    if (this.state === 'rise') {
+      this.y -= 2;
+      if (this.y <= flyY) {
+        this.y = flyY;
+        this.state = 'fly';
+        this.timer = 110 - rage * 15;
+      }
+    } else if (this.state === 'fly') {
+      // ルミナの上へ寄っていく。ふわふわ上下
+      this.facing = p.xpos > this.x ? 1 : 0;
+      const dx = p.xpos - this.x;
+      this.x += Math.sign(dx) * Math.min(Math.abs(dx), 1 + (rage >> 1));
+      this.y = flyY + Math.round(Math.sin(this.t / 10) * 4);
+      if (--this.timer <= 0) {
+        if (this.moves++ & 1) {
+          this.state = 'dive';
+          this.ys = 0;
+        } else {
+          // 玉の雨：真下へ 3 つ
+          for (const ox of [-24, 0, 24]) {
+            const b = new ShadowBall(this.x + ox, this.y + 4, 0);
+            b.xs = 0;
+            b.ys = 0x18;
+            w.actors.push(b);
+          }
+          w.emit('throw');
+          this.timer = 90 - rage * 12;
+        }
+      }
+    } else if (this.state === 'dive') {
+      this.moveY();
+      this.ys = Math.min(this.ys + 4, 0x40);
+      const f = this.collide(w.level);
+      if (f.floor) {
+        this.floorY = this.y;
+        this.ys = 0;
+        this.state = 'rest';
+        this.timer = 70 - rage * 8;
+        w.emit('bump');
+      }
+    } else if (this.state === 'rest') {
+      // 床で休む（踏むチャンス）
+      if (--this.timer <= 0) this.state = 'rise';
+    }
+    this.onFloor = this.state === 'rest';
+    if (!this.contactTimer && touchesPlayer(p, this.hitbox)) {
+      this.contactTimer = 8;
+      if (!this.inv && stompsFromAbove(p, this.hitbox, this.onFloor)) {
+        p.boost();
+        w.star(p.xpos + 4, p.ypos + 0x1c);
+        this.damage();
+        if (this.state === 'shell') this.floorY ??= this.y;
+      } else if (!this.inv) {
+        if (p.hurt()) w.onPlayerHurt();
+      }
+    }
+  }
+}
+
 // かげの玉：ボスが投げる。まっすぐ飛び、壁で消える。踏めない
 export class ShadowBall extends Sprite {
   constructor(x, y, dir) {
@@ -1002,6 +1094,7 @@ export class ShadowBall extends Sprite {
   update(w) {
     if (this.contactTimer) this.contactTimer--;
     this.moveX();
+    if (this.ys) this.moveY(); // そらの王の玉の雨は真下へ落ちる
     if (w.level.solidPx(this.x + 8, this.y + 8) || this.offscreen(w, 32)) {
       this.dead = true;
       return;

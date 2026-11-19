@@ -24,6 +24,7 @@ exports.build = async (opt, design) => {
   await pg.dispatchEvent('#title', 'change');
   await pg.fill('#width', String(opt.width));
   await pg.dispatchEvent('#width', 'change');
+  await pg.evaluate(() => document.activeElement && document.activeElement.blur());
   // パレットで選んで、マスに置く
   const pick = (name) => pg.click(`#palette button[title="${name}"]`);
   const put = (cells) => pg.evaluate((cs) => { for (const [x, y] of cs) window.editor.apply(x, y); }, cells);

@@ -77,6 +77,8 @@ const THEME_PAL = {
   castle: { ...TILE_PAL, l: '#d8d8e8', G: '#a4a4bc', g: '#76768e', D: '#5c5c74', d: '#44445a', e: '#70708a' },
   // 電気街：歩道のタイル（明るい灰色）と、その下のアスファルト
   akiba: { ...TILE_PAL, K: '#1c1424', l: '#f0eef8', G: '#c8c4d8', g: '#9a96b0', D: '#5a5670', d: '#46425a', e: '#6c6884' },
+  // 空：雲の地面（白と水色）
+  sky: { ...TILE_PAL, K: '#5a70a8', l: '#ffffff', G: '#f4f8ff', g: '#c4d4f0', D: '#e6eefc', d: '#d0dcf4', e: '#ffffff' },
 };
 // テーマごとの背景
 const SKY = {
@@ -85,6 +87,7 @@ const SKY = {
   ruins: ['#f0905c', '#ffd8a0'],
   castle: ['#18141e', '#302838'],
   akiba: ['#2a1c58', '#d86aa0'],
+  sky: ['#3a80e8', '#bfe0ff'],
 };
 // 1 枚絵のタイル（テーマによらない）
 const STAGE_TILES = {
@@ -162,6 +165,7 @@ export class LevelView {
     this.stage = {};
     for (const [t, name] of Object.entries(STAGE_TILES)) this.stage[t] = gridToCanvas(ART[name], PAL_STAGE);
     for (const [t, name] of Object.entries(AKIBA_TILES)) this.stage[t] = gridToCanvas(ART[name], ART.PAL_AKIBA);
+    this.stage[TILE.CLOUD] = gridToCanvas(ART.CLOUD, ART.PAL_SKY);
     this.torch = [ART.TORCH_A, ART.TORCH_B].map((f) => gridToCanvas(f, PAL_STAGE));
     this.lavaTop = gridToCanvas(ART.LAVA_TOP, PAL_STAGE);
     this.lava = gridToCanvas(ART.LAVA, PAL_STAGE);
@@ -311,6 +315,28 @@ export class LevelView {
         g.fillRect(x - 3, 160 - h, 20, 5);
         if (i % 2 === 0) g.fillRect(x + 14, 160 - h, 50, 6);
       }
+    } else if (name === 'sky') {
+      // 空の上：遠くの雲の峰と、下に広がる雲の海
+      const puff = (cx, cy, r, col) => {
+        g.fillStyle = col;
+        g.beginPath();
+        g.arc(cx, cy, r, 0, Math.PI * 2);
+        g.fill();
+      };
+      for (let i = 0; i < 9; i++) {
+        const cx = Math.floor(rnd() * 512);
+        const cy = 40 + Math.floor(rnd() * 80);
+        for (let j = 0; j < 4; j++) puff(cx + j * 14 - 20, cy + (j & 1) * 4, 10 + (j % 3) * 3, 'rgba(255,255,255,0.55)');
+      }
+      for (let x = 0; x < 512; x += 2) {
+        const t = (x / 512) * Math.PI * 2;
+        const y = 168 + Math.sin(t * 4) * 8 + Math.sin(t * 11) * 4;
+        g.fillStyle = '#e8f2ff';
+        g.fillRect(x, y, 2, 224 - y);
+        g.fillStyle = '#ffffff';
+        g.fillRect(x, y, 2, 3);
+      }
+      for (let i = 0; i < 14; i++) puff(i * 40 + Math.floor(rnd() * 12), 176 + Math.floor(rnd() * 8), 14 + Math.floor(rnd() * 8), '#ffffff');
     } else if (name === 'akiba') {
       // 夕暮れの電気街：ビルの並びと光る窓、ネオン看板、奥を走る高架
       const sign = ['#ff6ec7', '#6ef0ff', '#ffe46e', '#9effa0', '#ff9a5a'];

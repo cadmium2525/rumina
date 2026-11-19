@@ -59,6 +59,7 @@ const PALETTE = [
     tile(T.CASTLE_LEDGE, '木の橋（上からだけ乗れる）'), tile(T.TORCH, 'たいまつ（飾り）'), tile(T.WINDOW, '窓（飾り）'),
     tile(T.BOSS_DOOR_TOP, 'ボス扉（上）'), tile(T.BOSS_DOOR, 'ボス扉（下。置くと行き先を入力。↑で入る）'),
   ]],
+  ['空', [tile(T.CLOUD, '雲（上からだけ乗れる）')]],
   ['電気街', [
     tile(T.CONCRETE, 'コンクリート'), tile(T.RAIL, '高架の線路（上からだけ乗れる）'),
     tile(T.DUCT_TL, 'ダクトの口（左）'), tile(T.DUCT_TR, 'ダクトの口（右）'),
@@ -82,6 +83,7 @@ const PALETTE = [
     { kind: 'spawn', type: 'boss2', name: 'ボス：ほのおの王（5 回踏むと倒れてクリア）' },
     { kind: 'spawn', type: 'boss3', name: 'ボス：やみの王（7 回踏むと倒れてクリア）' },
     { kind: 'spawn', type: 'boss4', name: 'ボス：いわの王（6 回踏むと倒れてクリア。落石を降らせる）' },
+    { kind: 'spawn', type: 'boss5', name: 'ボス：そらの王（6 回踏むと倒れてクリア。空を飛ぶ）' },
   ]],
   ['その他', [
     { kind: 'start', name: 'スタート位置' }, { kind: 'goal', name: 'ゴール（もう一度置くと移動）' },
@@ -558,11 +560,17 @@ function syncButtons() {
   $('redo').disabled = !redo.length;
 }
 
+// 入力欄を今のステージに合わせる。パレットの絵はテーマで変わるので、テーマが変わった時だけ作り直す
+// （作り直すとボタンが入れ替わり、その瞬間のクリックが空振りするため）
+let paletteTheme = null;
 function syncFields() {
   $('theme').value = level.theme;
   $('width').value = String(level.width);
   $('title').value = level.title;
-  buildPalette();
+  if (paletteTheme !== level.theme) {
+    buildPalette();
+    paletteTheme = level.theme;
+  }
   setScroll(scrollX);
   showStatus();
 }
@@ -570,12 +578,14 @@ function syncFields() {
 $('theme').addEventListener('change', (e) => {
   edit(() => { level.theme = e.target.value; });
   buildPalette();
+  paletteTheme = level.theme;
 });
 $('title').addEventListener('change', (e) => {
   edit(() => { level.title = e.target.value.trim(); });
 });
 $('width').addEventListener('change', (e) => {
   const n = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, Math.round(+e.target.value) || level.width));
+  if (n === level.width) return; // 欄から離れた時にもう一度届く change は何もしない
   if (n < level.width && !confirm(`幅を ${n} マスにすると、右側の ${level.width - n} マスが消えます。よろしいですか？`)) {
     e.target.value = String(level.width);
     return;

@@ -1,0 +1,2 @@
+// 5-2 くものしたの部屋。ステージエディタで作ったデータ（tools/ の build_stage_*.cjs がエディタを操作して書き出す）。
+export const STAGE_5_2B = {"format":"rumina-level","version":1,"title":"5-2 くものしたの部屋","doorTo":"","width":40,"height":27,"theme":"sky","start":{"tx":2,"ty":23},"goal":null,"secretGoal":{"tx":32,"ty":23},"tiles":[0,734,76,3,0,68,8,1,0,2,76,3,0,9,76,3,0,137,1,120],"spawns":[{"type":"drone","tx":15,"ty":14},{"type":"spiker","tx":12,"ty":23},{"type":"spiker","tx":25,"ty":23}],"items":[{"tx":5,"ty":20,"item":"light"}],"messages":[]};

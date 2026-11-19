@@ -1,6 +1,6 @@
 // ステージの一覧。地図（js/overworld/maps.js）の点は、ここの id でステージを指す。
-// hidden はボス扉からしか入らないステージ。credit はクリアした時に「クリア」になる地図の点
-// （ボス部屋をクリアすると、お城がクリアになる）。
+// hidden は扉からしか入らないステージ（ボス部屋や、コースの中の隠し部屋）。credit はクリアした時に
+// 「クリア」になる地図の点（ボス部屋をクリアするとお城、隠し部屋のひみつのゴールなら元のコースの「*」）。
 // ?level=1-2 のように直接遊ぶ時は、クリアすると次のステージへ進む（最後の次は最初に戻る）。
 import { makeAkihabara } from './akihabara.js';
 import { STAGE_1_2 } from './stage1_2.js';
@@ -30,6 +30,14 @@ import { STAGE_4_4 } from './stage4_4.js';
 import { STAGE_4_5 } from './stage4_5.js';
 import { STAGE_4_5B } from './stage4_5b.js';
 import { STAGE_4_S } from './stage4_s.js';
+import { STAGE_5_1 } from './stage5_1.js';
+import { STAGE_5_2 } from './stage5_2.js';
+import { STAGE_5_2B } from './stage5_2b.js';
+import { STAGE_5_3 } from './stage5_3.js';
+import { STAGE_5_4 } from './stage5_4.js';
+import { STAGE_5_5 } from './stage5_5.js';
+import { STAGE_5_5B } from './stage5_5b.js';
+import { STAGE_5_S } from './stage5_s.js';
 
 export const STAGES = [
   { id: '1-1', make: makeAkihabara },
@@ -60,4 +68,12 @@ export const STAGES = [
   { id: '4-5', make: () => STAGE_4_5 },
   { id: '4-5B', make: () => STAGE_4_5B, hidden: true, credit: '4-5' },
   { id: '4-S', make: () => STAGE_4_S }, // 隠しコース（地図の H）
+  { id: '5-1', make: () => STAGE_5_1 },
+  { id: '5-2', make: () => STAGE_5_2 },
+  { id: '5-2B', make: () => STAGE_5_2B, hidden: true, credit: '5-2' }, // 5-2 の穴の底の扉の先（ひみつのゴール）
+  { id: '5-3', make: () => STAGE_5_3 },
+  { id: '5-4', make: () => STAGE_5_4 },
+  { id: '5-5', make: () => STAGE_5_5 },
+  { id: '5-5B', make: () => STAGE_5_5B, hidden: true, credit: '5-5' },
+  { id: '5-S', make: () => STAGE_5_S }, // 隠しコース（地図の H）
 ];
