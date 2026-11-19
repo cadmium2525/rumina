@@ -518,12 +518,14 @@ export class LightOrb extends Sprite {
 
 // ゴール（SMW のゴールテープ, sprite 0x7B）。2 本の柱の間をテープが上下する。
 // 柱の間を通るとゴール。テープに触れると、テープが切れて飛んでいく（ボーナス）
+// secret なら「ひみつのゴール」（色ちがいのゲート）：通ると地図の隠し道が開く（SMW の隠しゴール）
 export const GOAL_POST_H = 144;
 export class Goal extends Sprite {
   // tx, ty：ゲートの足元のタイル
-  constructor(tx, ty) {
+  constructor(tx, ty, secret = false) {
     super(tx * 16, (ty + 1) * 16);
     this.type = 'goal';
+    this.secret = secret;
     this.bottom = (ty + 1) * 16;      // 地面の高さ
     this.base = this.bottom - 24;     // テープの一番下 ($1528)
     this.y = this.base;               // テープの高さ
@@ -560,7 +562,7 @@ export class Goal extends Sprite {
         this.ys = -16;
         w.emit('tape');
       }
-      w.reachGoal();
+      w.reachGoal(this.secret);
     }
   }
 

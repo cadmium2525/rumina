@@ -6,12 +6,13 @@ import { World } from '../js/world.js';
 import { STAGES } from '../js/stages/index.js';
 import { STAGE_1_3 } from '../js/stages/stage1_3.js';
 
-assert.deepEqual(STAGES.map((s) => s.id), ['1-1', '1-2', '1-3', '1-4', '1-5', '1-5B', '2-1', '2-2', '2-3', '2-4', '2-5', '2-5B', '3-1', '3-2', '3-3', '3-4', '3-5', '3-5B']);
+assert.deepEqual(STAGES.map((s) => s.id), ['1-1', '1-2', '1-3', '1-4', '1-5', '1-5B', '1-S', '2-1', '2-2', '2-3', '2-4', '2-5', '2-5B', '2-S',
+    '3-1', '3-2', '3-3', '3-4', '3-5', '3-5B', '3-S']);
 const lv = new Level(STAGE_1_3);
 assert.equal(lv.title, '1-3 ゆうやけの遺跡');
 assert.equal(lv.theme, 'ruins');
 assert.equal(lv.width, 208);
-assert.ok(lv.goal && lv.messages.size === 1 && lv.contents.size === 2);
+assert.ok(lv.goal && lv.messages.size === 1 && lv.contents.size === 3 && lv.secretGoal);
 for (const p of [lv.start, lv.goal]) {
   assert.equal(lv.tileAt(p.tx, p.ty + 1), TILE.GROUND);
   assert.equal(lv.tileAt(p.tx, p.ty), TILE.EMPTY);

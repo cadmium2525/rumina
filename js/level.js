@@ -89,6 +89,7 @@ export class Level {
     this.theme = 'grass';
     this.start = { tx: 4, ty: GROUND_Y / 16 - 1 }; // スタート位置（足元のタイル）
     this.goal = null; // ゴール {tx, ty}（ゲートの足元のタイル）
+    this.secretGoal = null; // ひみつのゴール {tx, ty}。通ると地図の隠し道が開く
     this.messages = new Map(); // メッセージブロックの文 'tx,ty' → 文字列
     this.title = '';           // 始まる時に出す名前（例「1-1 アキハバラ」）
     this.doorTo = '';          // ボス扉の行き先のステージ（空ならクリア）
@@ -119,6 +120,7 @@ export class Level {
     for (const k of [...this.messages.keys()]) if (+k.split(',')[0] >= width) this.messages.delete(k);
     if (this.start.tx >= width) this.start.tx = width - 1;
     if (this.goal && this.goal.tx >= width) this.goal = null;
+    if (this.secretGoal && this.secretGoal.tx >= width) this.secretGoal = null;
   }
 
   // 保存用の形式：タイルは行ごとに並べて [値, 個数] の連長圧縮
@@ -136,6 +138,7 @@ export class Level {
       width: this.width, height: TILES_H, theme: this.theme,
       start: { ...this.start },
       goal: this.goal ? { ...this.goal } : null,
+      secretGoal: this.secretGoal ? { ...this.secretGoal } : null,
       tiles: rle,
       spawns: this.spawns.map((s) => ({ type: s.type, tx: Math.floor(s.x / 16), ty: Math.floor(s.y / 16) })),
       items: [...this.contents].map(([k, item]) => {
@@ -162,6 +165,7 @@ export class Level {
     this.theme = THEMES.includes(d.theme) ? d.theme : 'grass';
     if (d.start) this.start = { tx: d.start.tx | 0, ty: d.start.ty | 0 };
     this.goal = d.goal ? { tx: d.goal.tx | 0, ty: d.goal.ty | 0 } : null;
+    this.secretGoal = d.secretGoal ? { tx: d.secretGoal.tx | 0, ty: d.secretGoal.ty | 0 } : null;
     this.spawns = (d.spawns ?? []).filter((s) => SPAWN_TYPES.includes(s.type))
       .map((s) => ({ type: s.type, x: s.tx * 16, y: s.ty * 16 }));
     this.contents = new Map((d.items ?? []).map((e) => [`${e.tx},${e.ty}`, e.item]));

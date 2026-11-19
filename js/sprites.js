@@ -179,47 +179,55 @@ export class ActorSprites {
     this.shellSpin = [side, front, edge, front];
   }
 
-  // ゴールの柱 1 本（8x144）。上に光の玉
-  drawPost(g, x, bottom, frame) {
+  // ゴールの柱 1 本（8x144）。上に光の玉。ひみつのゴールは桃色と紫
+  drawPost(g, x, bottom, frame, secret = false) {
     const top = bottom - 144;
+    const [c1, c2, c3] = secret ? ['#ffd8f4', '#d878e0', '#9a48b0'] : ['#fff4c4', '#f6d480', '#d6a050'];
     g.fillStyle = '#24141c';
     g.fillRect(x, top + 8, 8, 136);
     for (let y = top + 9; y < bottom; y++) {
       const band = ((y - top) >> 3) & 1;
-      g.fillStyle = band ? '#fff4c4' : '#f6d480';
+      g.fillStyle = band ? c1 : c2;
       g.fillRect(x + 1, y, 6, 1);
-      g.fillStyle = band ? '#f6d480' : '#d6a050';
+      g.fillStyle = band ? c2 : c3;
       g.fillRect(x + 6, y, 1, 1);
     }
     // 光の玉（ゆっくり明滅）
     g.save();
     g.globalAlpha = 0.3 + 0.15 * Math.sin(frame / 10);
-    g.fillStyle = '#fff6b0';
+    g.fillStyle = secret ? '#ffb0f0' : '#fff6b0';
     g.beginPath();
     g.arc(x + 4, top + 4, 8, 0, Math.PI * 2);
     g.fill();
     g.restore();
     g.drawImage(this.light, x - 4, top - 4);
+    if (secret) {
+      // ひみつのゴール：光の玉に星のきらめき
+      g.fillStyle = '#ffffff';
+      const s = (frame >> 3) & 1 ? 2 : 3;
+      g.fillRect(x + 4, top + 4 - s - 2, 1, 2 * s + 5);
+      g.fillRect(x + 4 - s - 2, top + 4, 2 * s + 5, 1);
+    }
   }
 
   // ゴールの奥の柱とテープ。x はテープの位置（Goal.x）
   drawGoalBack(g, goal, frame, camX, camY) {
     const x = goal.x - camX;
-    this.drawPost(g, x - 20, goal.bottom - camY, frame);
+    this.drawPost(g, x - 20, goal.bottom - camY, frame, goal.secret);
     if (goal.done && !goal.cut) return; // 通った後のテープは消える
     const ty = Math.round(goal.y) - camY;
     const tx = x - 12;
     g.fillStyle = '#24141c';
     g.fillRect(tx, ty - 1, 32, 6);
-    g.fillStyle = '#fff8e0';
+    g.fillStyle = goal.secret ? '#ffe8fa' : '#fff8e0';
     g.fillRect(tx + 1, ty, 30, 2);
-    g.fillStyle = '#ffd860';
+    g.fillStyle = goal.secret ? '#e080e8' : '#ffd860';
     g.fillRect(tx + 1, ty + 2, 30, 2);
   }
 
   // ゴールの手前の柱（ルミナより手前に描く）
   drawGoalFront(g, goal, frame, camX, camY) {
-    this.drawPost(g, goal.x - camX + 20, goal.bottom - camY, frame);
+    this.drawPost(g, goal.x - camX + 20, goal.bottom - camY, frame, goal.secret);
   }
 
   // かげの王がトゲの球になった時の絵（32x32）

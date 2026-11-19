@@ -166,12 +166,14 @@ function step() {
     world.player.powerUp = power;
   }
   if (world.cleared && ++clearTimer > CLEAR_TIME && fromMap) {
-    // 地図へ戻って、クリアした点から道が開く（ボス部屋はお城のクリアになる）
+    // 地図へ戻って、クリアした点から道が開く（ボス部屋はお城のクリアになる）。
+    // ひみつのゴールなら「1-3*」のように * を付けて記録し、隠し道が開く
     const st = STAGES[stageIndex];
+    const exit = (st.credit || st.id) + (world.secretExit ? '*' : '');
     const power = world.player.powerUp;
     fadeTo(() => {
       backToMap();
-      ow.markCleared(st.credit || st.id, power);
+      ow.markCleared(exit, power);
     });
     return;
   }
@@ -302,6 +304,7 @@ function renderLevel() {
     if (a.state === 'carried') actorSprites.drawActor(g, a, world.frame, a.x - camX, a.y - camY);
   }
   if (world.goal) actorSprites.drawGoalFront(g, world.goal, world.frame, camX, camY);
+  if (world.secretGoal) actorSprites.drawGoalFront(g, world.secretGoal, world.frame, camX, camY);
   for (const e of world.effects) {
     if (e.kind === 'piece') actorSprites.drawPiece(g, e, world.frame, e.x - camX, e.y - camY);
     else if (e.kind === 'star') actorSprites.drawStar(g, e, e.x - camX, e.y - camY);

@@ -84,6 +84,7 @@ const PALETTE = [
   ]],
   ['その他', [
     { kind: 'start', name: 'スタート位置' }, { kind: 'goal', name: 'ゴール（もう一度置くと移動）' },
+    { kind: 'secret', name: 'ひみつのゴール（地図の隠し道が開く）' },
     { kind: 'erase', name: '消しゴム' },
   ]],
 ];
@@ -186,9 +187,15 @@ function apply(tx, ty, b = brush) {
     level.start = { tx, ty };
   } else if (b.kind === 'goal') {
     level.goal = { tx, ty };
+  } else if (b.kind === 'secret') {
+    level.secretGoal = { tx, ty };
   } else if (b.kind === 'erase') {
     if (level.goal && level.goal.tx === tx && level.goal.ty === ty) {
       level.goal = null;
+      return;
+    }
+    if (level.secretGoal && level.secretGoal.tx === tx && level.secretGoal.ty === ty) {
+      level.secretGoal = null;
       return;
     }
     const i = spawnAt(tx, ty);
@@ -206,6 +213,7 @@ function pick(tx, ty) {
   if (i >= 0) b = ALL.find((p) => p.kind === 'spawn' && p.type === level.spawns[i].type);
   else if (level.start.tx === tx && level.start.ty === ty) b = ALL.find((p) => p.kind === 'start');
   else if (level.goal && level.goal.tx === tx && level.goal.ty === ty) b = ALL.find((p) => p.kind === 'goal');
+  else if (level.secretGoal && level.secretGoal.tx === tx && level.secretGoal.ty === ty) b = ALL.find((p) => p.kind === 'secret');
   else {
     const t = level.tileAt(tx, ty);
     if (t === T.EMPTY) b = ALL.find((p) => p.kind === 'erase');
@@ -274,13 +282,14 @@ function render() {
   }
   const st = level.start;
   rumina.draw(g, 0, 1, st.tx * 16 - sx, (st.ty + 1) * 16 - 32, 0);
-  if (level.goal) {
-    const gl = { x: level.goal.tx * 16, bottom: (level.goal.ty + 1) * 16, y: (level.goal.ty + 1) * 16 - 24 };
+  for (const [goal, secret] of [[level.goal, false], [level.secretGoal, true]]) {
+    if (!goal) continue;
+    const gl = { x: goal.tx * 16, bottom: (goal.ty + 1) * 16, y: (goal.ty + 1) * 16 - 24, secret };
     actors.drawGoalBack(g, gl, frame, sx, 0);
     actors.drawGoalFront(g, gl, frame, sx, 0);
     // 置いた場所（足元のマス）
-    g.strokeStyle = 'rgba(255,224,112,0.8)';
-    g.strokeRect(gl.x - sx + 0.5, level.goal.ty * 16 + 0.5, 15, 15);
+    g.strokeStyle = secret ? 'rgba(255,150,240,0.8)' : 'rgba(255,224,112,0.8)';
+    g.strokeRect(gl.x - sx + 0.5, goal.ty * 16 + 0.5, 15, 15);
   }
   view.drawWater(g, level, sx, 0, frame, viewW, LEVEL_PX_H);
 
@@ -467,11 +476,11 @@ function iconFor(p) {
     t.height = 32;
     rumina.draw(t.getContext('2d'), 0, 1, 4, 0, 0);
     ig.drawImage(t, 1, 11, 22, 21, 0, 1, 16, 15);
-  } else if (p.kind === 'goal') {
+  } else if (p.kind === 'goal' || p.kind === 'secret') {
     ig.fillStyle = '#24141c';
     ig.fillRect(2, 2, 4, 14);
     ig.fillRect(10, 2, 4, 14);
-    ig.fillStyle = '#f6d480';
+    ig.fillStyle = p.kind === 'secret' ? '#d878e0' : '#f6d480';
     ig.fillRect(3, 3, 2, 13);
     ig.fillRect(11, 3, 2, 13);
     ig.fillStyle = '#fff8e0';

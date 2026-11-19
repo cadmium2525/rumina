@@ -104,7 +104,24 @@ export class Overworld {
     return !!(n.start || n.entry || (n.stage && this.isCleared(n.stage)));
   }
 
-  isOpenChain(c) { return this.isOpenNode(c.a) || this.isOpenNode(c.b); }
+  // 道が開いているか。隠しコースにつながる道は、隠しコースをクリアした時か、
+  // つながっている点を「ひみつのゴール」でクリアした時（'1-3*'）だけ開く
+  isOpenChain(c) {
+    const na = this.node(c.a);
+    const nb = this.node(c.b);
+    if (na.hidden || nb.hidden) {
+      const [hk, ok] = na.hidden ? [c.a, c.b] : [c.b, c.a];
+      const h = this.node(hk);
+      if (this.isCleared(h.stage)) return true;
+      return h.from === ok && this.isCleared(`${this.node(ok).stage}*`);
+    }
+    return this.isOpenNode(c.a) || this.isOpenNode(c.b);
+  }
+
+  // ひみつのゴールがある点（赤い点）か
+  hasSecret(key = this.nodeKey) {
+    return Object.values(this.map.nodes).some((n) => n.hidden && n.from === key);
+  }
 
   // 開いている道のマス（'x,y'）。表示中の新しい道（reveal）はまだ出ていない所を除く
   visibleTiles() {
@@ -250,9 +267,17 @@ export class Overworld {
     return n.stage;
   }
 
-  // 地図全体のクリア数（遊べるステージだけ数える）
+  // 地図全体の出口の数（SMW の「出口の数」）。遊べるステージのゴールと、
+  // 隠しコースが遊べるワールドのひみつのゴールを 1 つずつ数える
   progress() {
-    const all = Object.values(OW_MAPS).flatMap((m) => Object.values(m.nodes)).filter((n) => n.stage && this.stageIds.has(n.stage));
-    return { done: all.filter((n) => this.isCleared(n.stage)).length, total: all.length };
+    const exits = [];
+    for (const m of Object.values(OW_MAPS)) {
+      for (const n of Object.values(m.nodes)) {
+        if (!n.stage || !this.stageIds.has(n.stage)) continue;
+        exits.push(n.stage);
+        if (n.hidden && this.stageIds.has(m.nodes[n.from].stage)) exits.push(`${m.nodes[n.from].stage}*`);
+      }
+    }
+    return { done: exits.filter((e) => this.isCleared(e)).length, total: exits.length };
   }
 }

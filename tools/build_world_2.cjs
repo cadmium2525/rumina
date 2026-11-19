@@ -69,6 +69,20 @@ const { kit, SPIKER, CAPS, ROBO, DRONE, SPARK, SPIKE, SPIKE_D, TURN } = require(
     await k.foes(DRONE, [[63, 16]]);
     await fill(ROCK, 76, 16, 79, G - 1); // 岩の壁
     await fill('ハシゴ', 75, 15, 75, G - 1);
+    // ---- 寄り道：ハシゴは天井を突き抜けている。天井の上の通路の奥に、ひみつのゴール ----
+    await fill('ハシゴ', 75, 4, 75, 14);
+    await fill(ROCK, 70, 0, 160, 1);
+    await fill(ROCK, 70, 2, 70, 8);
+    await fill(ROCK, 160, 2, 160, 8);
+    await fill('マグマ（落ちるとミス）', 92, 9, 96, 9);
+    await fill('マグマ（落ちるとミス）', 118, 9, 123, 9);
+    await k.ledges(SHELF, [[93, 95, 6], [119, 120, 6], [122, 123, 5]]);
+    await k.foes(SPIKER, [[84, 8], [105, 8], [130, 8], [140, 8]]);
+    await k.foes(SPARK, [[121, 9]]);
+    await k.foes(DRONE, [[110, 4]]);
+    await k.light(100, 5);
+    await place('結晶（飾り）', [[80, 8], [112, 8], [146, 8], [150, 8]]);
+    await place('ひみつのゴール（地図の隠し道が開く）', [[154, 8]]);
     await k.foes(CAPS, [[77, 15]]);
     await k.ledges(SHELF, [[80, 81, 19]]);
     await k.pool(88, 110);

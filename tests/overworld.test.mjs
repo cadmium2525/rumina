@@ -34,7 +34,7 @@ const finishReveal = (ow) => { for (let f = 0; f < 2000 && ow.reveal.length; f++
     }
     stages += Object.values(m.nodes).filter((n) => n.stage).length;
   }
-  assert.equal(stages, 8 * 5 + 10, '8-5 + extra 10');
+  assert.equal(stages, 8 * 6 + 10, '8-5 + hidden course per world + extra 10');
   // 今あるステージ（1-1〜3-5）は全部地図にある
   const onMap = new Set(Object.values(OW_MAPS).flatMap((m) => Object.values(m.nodes)).map((n) => n.stage));
   for (const id of playable) assert.ok(onMap.has(id), `${id} is on the map`);
@@ -126,5 +126,41 @@ const finishReveal = (ow) => { for (let f = 0; f < 2000 && ow.reveal.length; f++
   assert.deepEqual(loadSave(st), { cleared: [], map: 'w1', node: 'S', power: 0 });
   st.setItem(SAVE_KEY, JSON.stringify({ map: 'w9', node: 'Q' }));
   assert.equal(loadSave(st).map, 'w1');
+}
+{
+  // 隠しコース：ひみつのゴール（'1-3*'）でだけ隠し道が開く。ふつうのゴールでは開かない
+  const st = memory();
+  const ow = new Overworld(loadSave(st), playable, st);
+  for (const id of ['1-1', '1-2', '1-3']) ow.markCleared(id, 0);
+  finishReveal(ow);
+  for (const bit of [R, D, R, D]) go(ow, bit);
+  assert.equal(ow.nodeKey, '3');
+  assert.ok(ow.hasSecret(), '1-3 has a secret exit (red dot)');
+  go(ow, D);
+  assert.equal(ow.nodeKey, '3', 'secret path closed after the normal goal');
+  // 1-4・1-5 をクリアしても（お城の側からも）開かない
+  ow.markCleared('1-4', 0);
+  ow.markCleared('1-5', 0);
+  finishReveal(ow);
+  const hc = Object.values(ow.graph.chains).filter((c) => c.a === 'H' || c.b === 'H');
+  assert.equal(hc.length, 2);
+  assert.ok(hc.every((c) => !ow.isOpenChain(c)), 'not opened from the castle side');
+  const before = ow.progress();
+  ow.markCleared('1-3*', 0);
+  assert.ok(ow.reveal.length > 0, 'secret path appears');
+  finishReveal(ow);
+  assert.equal(ow.progress().done, before.done + 1, 'secret exit counts');
+  go(ow, D);
+  assert.equal(ow.nodeKey, 'H');
+  assert.deepEqual(ow.step(pad(0, B)), { play: '1-S' });
+  // 隠しコースのクリアで、お城への近道が開く
+  ow.markCleared('1-S', 0);
+  finishReveal(ow);
+  go(ow, R);
+  assert.equal(ow.nodeKey, 'C');
+  go(ow, L);
+  go(ow, U);
+  assert.equal(ow.nodeKey, '3');
+  console.log('secret: ok');
 }
 console.log('overworld: ok');

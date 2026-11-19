@@ -170,6 +170,15 @@ const { build, G, kit, SPIKER, CAPS, ROBO, DRONE, SPARK, SPIKE, SPIKE_D, TURN } 
     await place(SPIKE_D, [[124, 21], [127, 21]]);
     await k.foes(ROBO, [125]);
     await duct(134);
+    // ---- 寄り道：ハシゴでビルの屋上へ。線路と屋根を渡ると、H 字の柱の屋上に、ひみつのゴール ----
+    await fill('ハシゴ', 46, 9, 46, G - 1);
+    await fill(CON, 47, 10, 52, 10);
+    await place('ネオン看板（飾り）', [[49, 10], [50, 10]]);
+    await k.ledges(RAIL, [[56, 59, 9], [63, 66, 8], [70, 73, 9], [77, 80, 8], [84, 87, 9], [108, 112, 9]]);
+    await k.foes(DRONE, [[61, 5], [88, 6], [114, 5]]);
+    await k.foes(ROBO, [[94, 10]]);
+    await k.light(102, 7);
+    await place('ひみつのゴール（地図の隠し道が開く）', [[129, 10]]);
     await k.foes(SPIKER, [140, 143]);
     await k.foes('ギフトボックス', [146]);
     await fill(TURN, 149, 21, 149, G - 1);

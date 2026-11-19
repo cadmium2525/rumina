@@ -33,6 +33,10 @@ export class World {
     }
     this.goal = this.level.goal ? new Goal(this.level.goal.tx, this.level.goal.ty) : null;
     if (this.goal) this.actors.push(this.goal);
+    const sg = this.level.secretGoal;
+    this.secretGoal = sg ? new Goal(sg.tx, sg.ty, true) : null;
+    if (this.secretGoal) this.actors.push(this.secretGoal);
+    this.secretExit = false; // ひみつのゴールでクリアした
     this.cleared = false;
     this.doorEntered = false; // ボス扉に入った（main.js が行き先のステージへ切り替える）
     this.message = null;  // 表示中のメッセージ（その間ゲームは止まる）
@@ -95,7 +99,9 @@ export class World {
   star(x, y) { this.effects.push({ kind: 'star', x, y, t: 8 }); }
 
   // ゴールした：画面の敵や持っている物は星になって消える（SMW ではコインになる）
-  reachGoal() {
+  reachGoal(secret = false) {
+    if (this.player.endTimer) return;
+    this.secretExit = secret;
     this.player.goal();
     for (const a of this.actors) {
       if (a.type === 'goal') continue;

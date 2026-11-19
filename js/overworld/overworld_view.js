@@ -360,17 +360,57 @@ export class OverworldView {
       g.fillRect(X + 8, Y - 4, 5, 3);
       return;
     }
-    // ふつうのステージ：まだ = 黄色、クリア = 青く光る、準備中 = 灰色
-    g.fillStyle = K;
+    if (n.hidden) {
+      // 隠しコース：桃色の星。クリアすると青い星
+      const pts = [];
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / 5;
+        const r = i & 1 ? 3.2 : 7.5;
+        pts.push([X + 8 + Math.cos(a) * r, Y + 8.5 + Math.sin(a) * r]);
+      }
+      const star = (grow) => {
+        g.beginPath();
+        pts.forEach(([x, y], i) => {
+          const px = X + 8 + (x - X - 8) * grow;
+          const py = Y + 8.5 + (y - Y - 8.5) * grow;
+          if (i) g.lineTo(px, py); else g.moveTo(px, py);
+        });
+        g.closePath();
+        g.fill();
+      };
+      g.fillStyle = K;
+      star(1.18);
+      g.fillStyle = soon ? '#7a7890' : cleared ? '#5ad0ff' : '#ff88d8';
+      star(1);
+      g.fillStyle = '#ffffff';
+      g.fillRect(X + 7, Y + 6, 2, 2);
+      return;
+    }
+    // ふつうのステージ：まだ = 黄色、クリア = 青く光る、準備中 = 灰色。
+    // ひみつのゴールがあるステージは赤（SMW と同じ）。ひみつのゴールを見つけると、金色の輪がつく
+    const secret = ow.hasSecret(key);
+    const foundSecret = secret && ow.isCleared(`${n.stage}*`);
+    g.fillStyle = foundSecret ? '#ffd040' : K;
     g.beginPath();
-    g.arc(X + 8, Y + 8, 6, 0, Math.PI * 2);
+    g.arc(X + 8, Y + 8, foundSecret ? 7 : 6, 0, Math.PI * 2);
     g.fill();
-    g.fillStyle = soon ? '#7a7890' : cleared ? '#5ad0ff' : '#ffd040';
+    if (foundSecret) {
+      g.fillStyle = K;
+      g.beginPath();
+      g.arc(X + 8, Y + 8, 6, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.fillStyle = soon ? '#7a7890' : cleared ? '#5ad0ff' : secret ? '#f04858' : '#ffd040';
     g.beginPath();
     g.arc(X + 8, Y + 8, 5, 0, Math.PI * 2);
     g.fill();
-    g.fillStyle = soon ? '#a8a6c0' : cleared ? '#e8faff' : '#fff2a0';
+    g.fillStyle = soon ? '#a8a6c0' : cleared ? '#e8faff' : secret ? '#ffb0b8' : '#fff2a0';
     g.fillRect(X + 5, Y + 5, 3, 2);
+    if (cleared && secret && !foundSecret) {
+      // クリアしたが、ひみつのゴールはまだ：赤い印
+      g.fillStyle = '#f04858';
+      g.fillRect(X + 10, Y + 10, 3, 3);
+    }
     if (cleared && (frame >> 4) & 1) {
       g.fillStyle = '#ffffff';
       g.fillRect(X + 12, Y + 1, 1, 3);
