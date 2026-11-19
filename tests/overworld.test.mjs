@@ -131,7 +131,7 @@ const finishReveal = (ow) => { for (let f = 0; f < 2000 && ow.reveal.length; f++
   // 壊れたセーブは最初から
   const st = memory();
   st.setItem(SAVE_KEY, '{oops');
-  assert.deepEqual(loadSave(st), { cleared: [], map: 'w1', node: 'S', power: 0 });
+  assert.deepEqual(loadSave(st), { cleared: [], coins: [], map: 'w1', node: 'S', power: 0 });
   st.setItem(SAVE_KEY, JSON.stringify({ map: 'w9', node: 'Q' }));
   assert.equal(loadSave(st).map, 'w1');
 }

@@ -7,6 +7,7 @@ import {
   PAL_BOSS, BOSS_A, BOSS_B,
   PAL_AKIBA, CAPSULE, ROBO_A, ROBO_B, DRONE_A, DRONE_B, SPARK_A, SPARK_B, SHELLBULLET,
 } from './art.js';
+import { GRAYCOIN, PAL_GRAYCOIN } from './graycoin_art.js';
 
 export const PALETTE = {
   K: '#24141c', // 輪郭
@@ -148,6 +149,7 @@ export class ActorSprites {
   constructor() {
     this.gift = gridToCanvas(GIFT, PAL_OBJ);
     this.light = gridToCanvas(LIGHT_ORB, PAL_OBJ);
+    this.grayCoin = gridToCanvas(GRAYCOIN, PAL_GRAYCOIN);
     // 電気街の敵（右向きと左向き）
     const both = (grid) => ({ right: gridToCanvas(grid, PAL_AKIBA, false), left: gridToCanvas(grid, PAL_AKIBA, true) });
     this.capsule = both(CAPSULE);
@@ -307,6 +309,14 @@ export class ActorSprites {
   }
 
   drawActor(g, a, frame, x, y) {
+    if (a.type === 'graycoin') {
+      // グレイコイン（24x24 をタイルの真ん中に）。もう記録されているものはうすく
+      g.save();
+      if (a.ghost) g.globalAlpha = 0.4;
+      g.drawImage(this.grayCoin, x - 4, y - 4);
+      g.restore();
+      return;
+    }
     if (a.type === 'boss8') return this.drawBoss(g, { ...a, variant: 8, type: 'boss', onFloor: true }, frame, x, y);
     if (a.type === 'boss7') return this.drawBoss(g, { ...a, variant: 7, type: 'boss' }, frame, x, y);
     if (a.type === 'bat') {

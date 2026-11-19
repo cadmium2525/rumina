@@ -31,6 +31,7 @@ body.portrait #stage { align-items: flex-start; padding-top: env(safe-area-inset
   width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--edge);
   background: rgba(0, 0, 0, 0.35); color: #fff; font: bold 15px/1 system-ui; padding: 0;
 }
+#topbar [hidden] { display: none !important; }
 #topbar a.tb { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; box-sizing: border-box; }
 #debug {
   position: fixed; left: calc(6px + env(safe-area-inset-left)); top: calc(24px + env(safe-area-inset-top));

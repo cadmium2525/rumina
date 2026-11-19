@@ -3,6 +3,8 @@ import { OW_MAPS } from './maps.js';
 import { TILE } from './overworld.js';
 import { POSE } from '../player.js';
 import { SCREEN_W, SCREEN_H } from '../level.js';
+import { gridToCanvas } from '../sprites.js';
+import { GRAYCOIN_SMALL, PAL_GRAYCOIN_SMALL } from '../graycoin_art.js';
 
 const K = '#24141c';
 
@@ -39,6 +41,10 @@ export class OverworldView {
   constructor(sprite) {
     this.sprite = sprite; // RuminaSprite
     this.cache = {};
+    // グレイコインのバッジ（取った・まだ）
+    this.coinBadge = gridToCanvas(GRAYCOIN_SMALL, PAL_GRAYCOIN_SMALL);
+    const shadow = Object.fromEntries(Object.keys(PAL_GRAYCOIN_SMALL).map((k) => [k, k === 'K' ? '#000000' : '#5a5868']));
+    this.coinShadow = gridToCanvas(GRAYCOIN_SMALL, shadow);
   }
 
   // 地形（道・点を除く、動かない部分）を 1 枚の絵にしておく
@@ -537,6 +543,16 @@ export class OverworldView {
     g.fillStyle = '#ffffff';
     g.font = 'bold 11px system-ui, sans-serif';
     g.fillText(text, 8, SCREEN_H - 10);
+    // グレイコインのバッジ：ステージ名の横。取った（取ってクリアした）コースは色つき、まだなら暗い影
+    const coinId = n.stage && !ow.isSoon(n) ? n.stage : n.home && ow.homeOpen(n) ? n.last : null;
+    if (coinId && ow.coinIds?.has(coinId)) {
+      const bx = Math.round(8 + g.measureText(text).width + 5);
+      const got = ow.hasCoin(coinId);
+      g.save();
+      if (!got) g.globalAlpha = 0.35;
+      g.drawImage(got ? this.coinBadge : this.coinShadow, bx, SCREEN_H - 16);
+      g.restore();
+    }
     if (sub) {
       g.textAlign = 'right';
       g.font = '9px system-ui, sans-serif';

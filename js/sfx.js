@@ -103,6 +103,11 @@ export const sfx = {
     tone('triangle', 392, 784, 0.12, 0.1);
     setTimeout(() => tone('square', 784, 1046, 0.1, 0.05), 60);
   },
+  // グレイコインを取った：きらきら上がる音
+  graycoin() {
+    [988, 1319, 1568, 1976].forEach((f, i) => setTimeout(() => tone('square', f, f, 0.09, 0.06), i * 70));
+    setTimeout(() => tone('triangle', 1976, 2637, 0.25, 0.07), 280);
+  },
   // かざんの王：床が揺れる・火柱が噴き上がる
   rumble() {
     noise(0.35, 0.08);

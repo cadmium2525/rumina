@@ -112,6 +112,7 @@ const PALETTE = [
   ]],
   ['その他', [
     { kind: 'start', name: 'スタート位置' }, { kind: 'goal', name: 'ゴール（もう一度置くと移動）' },
+    { kind: 'spawn', type: 'graycoin', name: 'グレイコイン（1 ステージに 1 枚）' },
     { kind: 'secret', name: 'ひみつのゴール（地図の隠し道が開く）' },
     { kind: 'erase', name: '消しゴム' },
   ]],

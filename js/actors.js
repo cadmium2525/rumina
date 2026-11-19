@@ -571,6 +571,32 @@ export class Goal extends Sprite {
   get hitbox() { return { x: this.x - 8, y: this.y, w: 16, h: 4 }; }
 }
 
+// グレイコイン：1 つのステージに 1 枚。触れると取れる（取ってコースクリアすると記録される）。
+// ghost：もう記録されている（うすく描く。取ってもよい）
+export class GrayCoin extends Sprite {
+  constructor(x, y, ghost = false) {
+    super(x, y);
+    this.type = 'graycoin';
+    this.ghost = ghost;
+    this.y0 = y;
+    this.t = 0;
+  }
+
+  // 絵は 24x24（タイルの真ん中に合わせる）。当たり判定は 20x20
+  get hitbox() { return { x: this.x - 2, y: this.y0 - 2, w: 20, h: 20 }; }
+
+  update(w) {
+    this.t++;
+    this.y = this.y0 + Math.round(Math.sin(this.t / 14) * 1.5);
+    if (touchesPlayer(w.player, this.hitbox) && w.player.state === 0) {
+      this.dead = true;
+      w.coinTaken = true;
+      for (const [dx, dy] of [[-6, -6], [10, -6], [-6, 10], [10, 10], [2, -10]]) w.star(this.x + dx, this.y + dy);
+      w.emit('graycoin');
+    }
+  }
+}
+
 // ---- 電気街の敵（1-1 アキハバラ）。動きはオリジナル（ルミナ側の処理は SMW のまま） ----
 
 // 踏まれた時の共通処理。踏めたら true（呼び出し側で倒す・弱らせる）

@@ -44,6 +44,7 @@ export class Darkness {
       else if (a.type === 'shadowball') out.push([x + 8, y + 8, 18]); // ボスの玉はかすかに光る
       else if (a.type === 'bat' && !a.dying) out.push([x + 8, y + 8, 10]); // コウモリの目が光る
       else if (a.type === 'goal') out.push([x, a.bottom - camY - 40, 56]);
+      else if (a.type === 'graycoin') out.push([x + 8, y + 8, 20]); // グレイコインはかすかに光る
     }
     // 光るタイル：たいまつ・溶岩の表面・結晶・ネオン
     const lv = world.level;

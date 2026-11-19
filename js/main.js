@@ -10,12 +10,15 @@ import { sfx, unlockAudio } from './sfx.js';
 import { haptic, isHapticsOn, setHaptics } from './haptics.js';
 import { Overworld, loadSave, SAVE_KEY } from './overworld/overworld.js';
 import { OverworldView } from './overworld/overworld_view.js';
+import { TitleScreen } from './title.js';
 
 const FRAME_MS = 1000 / 60.0988; // SNES (NTSC) のフレームレート
 
 const canvas = document.getElementById('screen');
 const g = canvas.getContext('2d');
 g.imageSmoothingEnabled = false;
+// 画面の中身は 256x224 だが、キャンバスはその RES 倍の大きさで描く（文字がぼやけないように。ドット絵はそのまま拡大）
+let RES = 1;
 
 const touchRoot = document.getElementById('touch');
 const input = new Input(touchRoot);
@@ -45,6 +48,9 @@ function chooseLevel() {
   return STAGES[stageIndex].make();
 }
 let stageIndex = -1; // STAGES の何番目か（custom・test は -1）
+// 開発用の表示（リセット・振動・エディタ・ヘルプ・デバッグのボタン、P メーター）は、
+// 直接遊ぶ時（?level=…、エディタのテストプレイ）か ?debug=1 の時だけ出す
+const DEV = !!DIRECT || new URLSearchParams(location.search).has('debug');
 let levelData = DIRECT ? chooseLevel() : null;
 let world = DIRECT ? new World(levelData) : null;
 
@@ -53,14 +59,21 @@ let world = DIRECT ? new World(levelData) : null;
 const PLAYABLE = STAGES.filter((s) => !s.hidden || s.onMap).map((s) => s.id);
 const TITLES = Object.fromEntries(STAGES.filter((s) => !s.hidden).map((s) => [s.id, s.make().title || s.id]));
 const owView = new OverworldView(sprite);
+// グレイコインがあるステージ（記録の id：ボス部屋はお城、最終コースは LAST）
+const coinIdOf = (st) => st.credit || st.id;
+const COIN_IDS = new Set(STAGES.filter((s) => s.make().spawns?.some((p) => p.type === 'graycoin')).map(coinIdOf));
 function makeOverworld() {
   const o = new Overworld(loadSave(), PLAYABLE);
   o.titles = TITLES;
+  o.coinIds = COIN_IDS;
   return o;
 }
 let ow = DIRECT ? null : makeOverworld();
-let mode = DIRECT ? 'level' : 'map'; // 'map'（地図）または 'level'（ステージ）
+// 'title'（タイトル）・'map'（地図）・'level'（ステージ）
+let mode = DIRECT ? 'level' : 'title';
 const fromMap = !DIRECT;
+const title = new TitleScreen(sprite, view);
+let coinCarry = false; // このステージ（扉の先の部屋もふくめて）でグレイコインを取った
 
 // 暗転して切り替える：暗くなりきった所で fn を呼び、また明るくする
 const FADE = 18;
@@ -81,7 +94,8 @@ const fadeAlpha = () => (trans ? (trans.t < FADE ? trans.t / FADE : 2 - trans.t 
 function playStage(id) {
   stageIndex = STAGES.findIndex((s) => s.id === id);
   levelData = STAGES[stageIndex].make();
-  world = new World(levelData);
+  coinCarry = false;
+  newWorld();
   world.player.powerUp = ow ? ow.save.power : 0;
   clearTimer = 0;
   doorTimer = 0;
@@ -90,10 +104,59 @@ function playStage(id) {
   syncMapBtn();
 }
 
+// ステージを作る。もう記録されているグレイコインはうすく描く
+function newWorld() {
+  world = new World(levelData);
+  const st = STAGES[stageIndex];
+  if (world.grayCoin && ow && st && ow.hasCoin(coinIdOf(st))) world.grayCoin.ghost = true;
+}
+
 function backToMap() {
   mode = 'map';
   paused = false;
   syncMapBtn();
+}
+
+function toTitle() {
+  mode = 'title';
+  paused = false;
+  syncTitle();
+  syncMapBtn();
+}
+
+// タイトルのメニュー（セーブがあるか・振動）
+function syncTitle() {
+  const s = ow ? ow.save : loadSave();
+  title.setItems({ hasSave: s.cleared.length > 0 || s.map !== 'w1' || s.node !== 'S', haptics: isHapticsOn() });
+}
+
+// タイトルで選んだ
+function titleAction(id) {
+  if (!id) return;
+  if (id === 'continue') {
+    sfx.door();
+    fadeTo(() => {
+      ow = makeOverworld();
+      backToMap();
+    });
+  } else if (id === 'new') {
+    if (!confirm('進み具合（クリアしたステージとグレイコイン）をすべて消して、はじめから遊びますか？')) return;
+    try { localStorage.removeItem(SAVE_KEY); } catch { /* 消せなくても続ける */ }
+    sfx.door();
+    fadeTo(() => {
+      ow = makeOverworld();
+      backToMap();
+    });
+  } else if (id === 'help') {
+    document.getElementById('help').hidden = false;
+  } else if (id === 'editor') {
+    location.href = 'editor.html';
+  } else if (id === 'haptic') {
+    setHaptics(!isHapticsOn());
+    syncHapBtn();
+    haptic('medium');
+    syncTitle();
+  }
 }
 let paused = false;
 let clearTimer = 0;
@@ -110,7 +173,7 @@ let showDebug = false;
 // ゲーム内イベント → 効果音と触覚フィードバック
 const HAPTIC_OF = {
   break: 'medium', shatter: 'medium', bounce: 'medium', shrink: 'heavy', die: 'heavy', grow: 'medium',
-  goal: 'heavy', tape: 'medium', bossdown: 'heavy', door: 'medium', message: 'light', cannon: 'light', bump: 'light', grab: 'light', throw: 'light', kick: 'light', splash: 'light', note: 'light', shock: 'medium', rumble: 'light', fire: 'medium',
+  goal: 'heavy', tape: 'medium', bossdown: 'heavy', door: 'medium', message: 'light', cannon: 'light', bump: 'light', grab: 'light', throw: 'light', kick: 'light', splash: 'light', note: 'light', shock: 'medium', rumble: 'light', fire: 'medium', graycoin: 'heavy',
 };
 
 const MAP_SOUND = { bump: 'bump', enter: 'door', warp: 'door', reveal: 'reveal' };
@@ -121,7 +184,23 @@ function step() {
     stepTrans();
     return;
   }
+  if (mode === 'title') {
+    if (!document.getElementById('help').hidden) return;
+    const a = title.step(pad);
+    if (title.moved) {
+      sfx.reveal();
+      title.moved = false;
+    }
+    titleAction(a);
+    return;
+  }
   if (mode === 'map') {
+    // START でタイトルへ
+    if (pad.startPressed) {
+      sfx.pause();
+      fadeTo(toTitle);
+      return;
+    }
     const r = ow.step(pad);
     for (const ev of ow.events) {
       if (MAP_SOUND[ev] && sfx[MAP_SOUND[ev]]) sfx[MAP_SOUND[ev]]();
@@ -138,6 +217,7 @@ function step() {
   }
   if (paused) return;
   world.step(pad);
+  if (world.coinTaken) coinCarry = true;
   for (const ev of world.events) {
     if (sfx[ev]) sfx[ev]();
     if (HAPTIC_OF[ev]) haptic(HAPTIC_OF[ev]);
@@ -165,7 +245,10 @@ function step() {
       stageIndex = nextStage(stageIndex);
       levelData = STAGES[stageIndex].make();
     }
+    // 扉の先の部屋へ（取ったグレイコインはそのまま。クリアした時に記録する）
+    const carry = coinCarry;
     reset();
+    coinCarry = carry;
     world.player.powerUp = power;
   }
   if (world.cleared && ++clearTimer > CLEAR_TIME && fromMap) {
@@ -174,8 +257,10 @@ function step() {
     const st = STAGES[stageIndex];
     const exit = (st.credit || st.id) + (world.secretExit ? '*' : '');
     const power = world.player.powerUp;
+    const coin = coinCarry && COIN_IDS.has(coinIdOf(st));
     fadeTo(() => {
       backToMap();
+      if (coin) ow.markCoin(coinIdOf(st)); // グレイコインは取ってコースクリアした時に記録する
       ow.markCleared(exit, power);
     });
     return;
@@ -275,6 +360,21 @@ function drawClear() {
 }
 
 function render() {
+  g.setTransform(RES, 0, 0, RES, 0, 0);
+  g.imageSmoothingEnabled = false;
+  if (mode === 'title') {
+    const s = ow ? ow.save : loadSave();
+    const coins = (s.coins ?? []).filter((id) => COIN_IDS.has(id)).length;
+    const o = ow ?? makeOverworld();
+    const pr = o.progress();
+    title.draw(g, { coins, coinTotal: COIN_IDS.size, clears: pr.done, clearTotal: pr.total });
+    const a = fadeAlpha();
+    if (a) {
+      g.fillStyle = `rgba(0,0,0,${a})`;
+      g.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    }
+    return;
+  }
   if (mode === 'map') {
     owView.draw(g, ow, ow.frame, ow.save.power, fadeAlpha());
     if (showDebug) debugEl.textContent = `map ${ow.mapId}  node ${ow.nodeKey}  ${ow.x},${ow.y}\ncleared ${ow.save.cleared.join(' ')}`;
@@ -330,7 +430,7 @@ function renderLevel() {
   // 暗やみ：光る物のまわりだけ見える
   if (world.level.dark) darkness.draw(g, world, camX, camY, world.frame);
 
-  drawPMeter();
+  if (DEV) drawPMeter(); // P メーターは開発用（SMW には無い表示）
   if (world.doorEntered) {
     // 扉に入る：暗くなる
     g.fillStyle = `rgba(0,0,0,${Math.min(1, doorTimer / 30)})`;
@@ -394,6 +494,14 @@ function layout() {
   if (scale >= 2 && Math.floor(scale) / scale > 0.9) scale = Math.floor(scale);
   canvas.style.width = `${Math.floor(SCREEN_W * scale)}px`;
   canvas.style.height = `${Math.floor(SCREEN_H * scale)}px`;
+  // 表示の大きさに合わせて、キャンバスを 2〜3 倍の細かさで描く（文字をくっきりさせる）
+  const res = Math.max(1, Math.min(3, Math.round(scale * (window.devicePixelRatio || 1))));
+  if (res !== RES || canvas.width !== SCREEN_W * res) {
+    RES = res;
+    canvas.width = SCREEN_W * RES;
+    canvas.height = SCREEN_H * RES;
+    g.imageSmoothingEnabled = false;
+  }
 }
 window.addEventListener('resize', layout);
 window.addEventListener('orientationchange', () => setTimeout(layout, 100));
@@ -416,8 +524,9 @@ function toggleDebug() {
   debugEl.hidden = !showDebug;
 }
 function reset() {
-  if (mode === 'map') return;
-  world = new World(levelData);
+  if (mode !== 'level') return;
+  coinCarry = false;
+  newWorld();
   if (fromMap) world.player.powerUp = ow.save.power;
   clearTimer = 0;
   doorTimer = 0;
@@ -439,6 +548,7 @@ hapBtn.addEventListener('click', () => {
 syncHapBtn();
 
 window.addEventListener('keydown', (e) => {
+  if (!DEV) return; // デバッグ表示とリセットは開発用
   if (e.code === 'F2' || e.code === 'Backquote') toggleDebug();
   if (e.code === 'KeyR') reset();
 });
@@ -468,6 +578,17 @@ const mapBtn = document.getElementById('btn-map');
 function syncMapBtn() {
   mapBtn.hidden = !(fromMap && mode === 'level');
 }
+// 開発用のボタンは DEV の時だけ
+for (const id of ['btn-reset', 'btn-haptic', 'btn-edit', 'btn-help', 'btn-debug']) document.getElementById(id).hidden = !DEV;
+// タイトルのメニューをタップ
+canvas.addEventListener('pointerdown', (e) => {
+  if (mode !== 'title' || trans || !document.getElementById('help').hidden) return;
+  const r = canvas.getBoundingClientRect();
+  const x = ((e.clientX - r.left) / r.width) * SCREEN_W;
+  const y = ((e.clientY - r.top) / r.height) * SCREEN_H;
+  titleAction(title.hit(x, y));
+});
+syncTitle();
 function exitToMap() {
   if (!fromMap || mode !== 'level' || trans) return;
   if (world.player.state === 0) ow.setPower(world.player.powerUp);
@@ -485,10 +606,10 @@ document.getElementById('btn-save-reset').addEventListener('click', (e) => {
   try { localStorage.removeItem(SAVE_KEY); } catch { /* 消せなくても続ける */ }
   if (fromMap) {
     ow = makeOverworld();
-    backToMap();
+    toTitle();
   }
   document.getElementById('help').hidden = true;
 });
 
 // デバッグ・自動テスト用
-window.rumina = { get world() { return world; }, get ow() { return ow; }, get mode() { return mode; } };
+window.rumina = { get world() { return world; }, get ow() { return ow; }, get mode() { return mode; }, get title() { return title; }, COIN_IDS };

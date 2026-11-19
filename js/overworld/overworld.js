@@ -69,10 +69,10 @@ export function loadSave(storage = globalThis.localStorage) {
   try {
     const d = JSON.parse(storage?.getItem(SAVE_KEY) ?? 'null');
     if (d && OW_MAPS[d.map] && OW_MAPS[d.map].nodes[d.node]) {
-      return { cleared: [...new Set(d.cleared ?? [])], map: d.map, node: d.node, power: d.power | 0 };
+      return { cleared: [...new Set(d.cleared ?? [])], coins: [...new Set(d.coins ?? [])], map: d.map, node: d.node, power: d.power | 0 };
     }
   } catch { /* 壊れていたら最初から */ }
-  return { cleared: [], ...OW_START, power: 0 };
+  return { cleared: [], coins: [], ...OW_START, power: 0 };
 }
 
 export function writeSave(save, storage = globalThis.localStorage) {
@@ -171,6 +171,14 @@ export class Overworld {
   near(c, p) {
     const d = (t) => Math.abs(t[0] - p.x) + Math.abs(t[1] - p.y);
     return d(c.tiles[0]) <= d(c.tiles[c.tiles.length - 1]);
+  }
+
+  // グレイコイン：stage（クリアの記録と同じ id。ボス部屋はお城、最終コースは LAST）のコインを取ってクリアした
+  hasCoin(stage) { return (this.save.coins ?? []).includes(stage); }
+  markCoin(stage) {
+    this.save.coins ??= [];
+    if (!this.hasCoin(stage)) this.save.coins.push(stage);
+    this.persist();
   }
 
   setPower(power) {

@@ -96,7 +96,7 @@ export const NOTE_LAUNCH = -96;      // 跳ね終わりのルミナの速さ (pl
 export const AUTO_SCROLL_MAX = [0x80, 0x100];
 
 // ステージに置ける敵・物
-export const SPAWN_TYPES = ['gift', 'shell', 'spiker', 'capsule', 'robo', 'drone', 'spark', 'boss', 'boss2', 'boss3', 'boss4', 'boss5', 'boss6', 'boss7', 'ember', 'bat', 'boss8'];
+export const SPAWN_TYPES = ['gift', 'shell', 'spiker', 'capsule', 'robo', 'drone', 'spark', 'boss', 'boss2', 'boss3', 'boss4', 'boss5', 'boss6', 'boss7', 'ember', 'bat', 'boss8', 'graycoin'];
 
 export const MIN_WIDTH = 16;
 export const MAX_WIDTH = 1024;

@@ -138,7 +138,8 @@ function act(w, hold) {
 }
 
 // noDamage：ダメージを受けた候補も捨てる（ダメージを受けずに通れるかを調べる）
-export function findRoute(id, { want = 'goal', maxDepth = 900, beam = BEAM, log = false, from = null, enemies = false, noDamage = false } = {}) {
+// doorOk：want が goal の時、扉（ボス扉・古びたドアなど）に入るのもゴールとみなす（既定）
+export function findRoute(id, { want = 'goal', maxDepth = 900, beam = BEAM, log = false, from = null, enemies = false, noDamage = false, doorOk = true } = {}) {
   const w = makeWorld(id, enemies);
   if (from) {
     // 途中から：その場所に置いて、ツタ・ハシゴがあればつかまる
@@ -159,7 +160,7 @@ export function findRoute(id, { want = 'goal', maxDepth = 900, beam = BEAM, log 
         if (r === 'dead') continue;
         if (noDamage && (!w.player.powerUp || w.player.hurtTimer)) continue;
         const path = node.path.concat(a);
-        if (r && (r === want || (want === 'goal' && r === 'door'))) return { ok: true, depth, frames: path.length * MACRO, path };
+        if (r && (r === want || (want === 'goal' && r === 'door' && doorOk))) return { ok: true, depth, frames: path.length * MACRO, path };
         if (r) continue; // 目的と違うゴール
         const p = w.player;
         // 敵がいる時は、ダメージを受けたかも区別する

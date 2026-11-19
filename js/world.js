@@ -2,7 +2,7 @@
 // DOM に依存しない（描画は main.js / *_view.js）。
 import { Player } from './player.js';
 import { Level, Camera, GROUND_Y, SCREEN_W, LEVEL_H, TILE, CAM_Y, NOTE_YACCEL, NOTE_LAUNCH } from './level.js';
-import { GiftBox, Shell, Spiker, LightOrb, Goal, Capsule, Robo, Drone, Spark, Bullet, Boss, Boss2, Boss3, Boss4, Boss5, Boss6, Boss7, Boss8, Ember, Bat } from './actors.js';
+import { GiftBox, Shell, Spiker, LightOrb, Goal, Capsule, Robo, Drone, Spark, Bullet, Boss, Boss2, Boss3, Boss4, Boss5, Boss6, Boss7, Boss8, Ember, Bat, GrayCoin } from './actors.js';
 import { SHOOTER_TIME, SHOOTER_NEAR } from './smw_tables.js';
 import { BRICK_X, BRICK_Y, BRICK_XSPEED, BRICK_YSPEED } from './smw_tables.js';
 
@@ -23,7 +23,9 @@ export class World {
     this.effects = [];
     this.events = [];
     this.frame = 0;
-    this.points = this.level.spawns.map((s) => ({ ...s, state: 'idle', actor: null }));
+    // グレイコインは出たり消えたりしない（取ったらおしまい）ので、ふつうの敵・物とは別に最初から置く
+    this.points = this.level.spawns.filter((s) => s.type !== 'graycoin').map((s) => ({ ...s, state: 'idle', actor: null }));
+    this.coinTaken = false; // このステージのグレイコインを取った
     // 砲台：砲台のタイル 1 つが 1 つの発射台 (shooter sprite)
     this.shooters = [];
     for (let ty = 0; ty < this.level.tiles.length / this.level.width; ty++) {
@@ -36,6 +38,9 @@ export class World {
     const sg = this.level.secretGoal;
     this.secretGoal = sg ? new Goal(sg.tx, sg.ty, true) : null;
     if (this.secretGoal) this.actors.push(this.secretGoal);
+    const coin = this.level.spawns.find((s) => s.type === 'graycoin');
+    this.grayCoin = coin ? new GrayCoin(coin.x, coin.y) : null;
+    if (this.grayCoin) this.actors.push(this.grayCoin);
     this.secretExit = false; // ひみつのゴールでクリアした
     this.cleared = false;
     this.doorEntered = false; // ボス扉に入った（main.js が行き先のステージへ切り替える）
@@ -111,7 +116,7 @@ export class World {
     this.secretExit = secret;
     this.player.goal();
     for (const a of this.actors) {
-      if (a.type === 'goal') continue;
+      if (a.type === 'goal' || a.type === 'graycoin') continue; // グレイコインはゴールしても残る（取ったかどうかだけ）
       this.star(a.x, a.y);
       a.dead = true;
     }
