@@ -185,7 +185,11 @@ function step() {
     return;
   }
   if (mode === 'title') {
-    if (!document.getElementById('help').hidden) return;
+    const help = document.getElementById('help');
+    if (!help.hidden) {
+      if ((pad.press1 & 0x80) || (pad.press2 & 0x80) || pad.startPressed) help.hidden = true;
+      return;
+    }
     const a = title.step(pad);
     if (title.moved) {
       sfx.reveal();
@@ -235,16 +239,17 @@ function step() {
   }
   // コースクリア：文字を出してしばらくしたらやり直し
   // ボス扉に入った：行き先のステージへ（無ければクリア扱い）。大きさは引き継ぐ
-  if (world.doorEntered && ++doorTimer > DOOR_TIME) {
+  if (world.doorEntered && !world.cleared && ++doorTimer > DOOR_TIME) {
     const i = STAGES.findIndex((s) => s.id === world.level.doorTo);
     const power = world.player.powerUp;
-    if (i >= 0) {
-      stageIndex = i;
-      levelData = STAGES[i].make();
-    } else if (stageIndex >= 0) {
-      stageIndex = nextStage(stageIndex);
-      levelData = STAGES[stageIndex].make();
+    if (i < 0) {
+      // 行き先の無い扉（エディタで行き先を空にした）は、入るとコースクリア
+      world.cleared = true;
+      clearTimer = 1;
+      return;
     }
+    stageIndex = i;
+    levelData = STAGES[i].make();
     // 扉の先の部屋へ（取ったグレイコインはそのまま。クリアした時に記録する）
     const carry = coinCarry;
     reset();
@@ -591,7 +596,10 @@ canvas.addEventListener('pointerdown', (e) => {
 syncTitle();
 function exitToMap() {
   if (!fromMap || mode !== 'level' || trans) return;
-  if (world.player.state === 0) ow.setPower(world.player.powerUp);
+  // ゴールした後（クリアの記録の前）・扉に入った後・ミスや大きさが変わる演出の間は戻れない
+  const p = world.player;
+  if (p.endTimer || world.cleared || world.doorEntered || p.state !== 0 || p.locked || p.dead) return;
+  ow.setPower(p.powerUp);
   fadeTo(backToMap);
 }
 mapBtn.addEventListener('click', exitToMap);

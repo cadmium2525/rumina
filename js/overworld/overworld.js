@@ -69,7 +69,9 @@ export function loadSave(storage = globalThis.localStorage) {
   try {
     const d = JSON.parse(storage?.getItem(SAVE_KEY) ?? 'null');
     if (d && OW_MAPS[d.map] && OW_MAPS[d.map].nodes[d.node]) {
-      return { cleared: [...new Set(d.cleared ?? [])], coins: [...new Set(d.coins ?? [])], map: d.map, node: d.node, power: d.power | 0 };
+      // 壊れた値は読まない（記録は文字列の配列だけ、大きさは 0 か 1）
+      const ids = (v) => (Array.isArray(v) ? [...new Set(v.filter((x) => typeof x === 'string'))] : []);
+      return { cleared: ids(d.cleared), coins: ids(d.coins), map: d.map, node: d.node, power: d.power ? 1 : 0 };
     }
   } catch { /* 壊れていたら最初から */ }
   return { cleared: [], coins: [], ...OW_START, power: 0 };

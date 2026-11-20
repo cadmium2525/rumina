@@ -588,7 +588,8 @@ export class GrayCoin extends Sprite {
   update(w) {
     this.t++;
     this.y = this.y0 + Math.round(Math.sin(this.t / 14) * 1.5);
-    if (touchesPlayer(w.player, this.hitbox) && w.player.state === 0) {
+    // ゴールした後（勝利の歩き）は取れない
+    if (touchesPlayer(w.player, this.hitbox) && w.player.state === 0 && !w.player.endTimer) {
       this.dead = true;
       w.coinTaken = true;
       for (const [dx, dy] of [[-6, -6], [10, -6], [-6, 10], [10, 10], [2, -10]]) w.star(this.x + dx, this.y + dy);

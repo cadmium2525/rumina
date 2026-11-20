@@ -211,6 +211,8 @@ function apply(tx, ty, b = brush) {
   } else if (b.kind === 'spawn') {
     const i = spawnAt(tx, ty);
     if (i >= 0) level.spawns.splice(i, 1);
+    // グレイコインは 1 ステージに 1 枚（前に置いたものは消える）
+    if (b.type === 'graycoin') level.spawns = level.spawns.filter((s) => s.type !== 'graycoin');
     level.spawns.push({ type: b.type, x: tx * 16, y: ty * 16 });
   } else if (b.kind === 'start') {
     level.start = { tx, ty };
