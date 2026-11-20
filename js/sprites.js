@@ -231,7 +231,7 @@ export class ActorSprites {
   drawGoalBack(g, goal, frame, camX, camY) {
     const x = goal.x - camX;
     this.drawPost(g, x - 20, goal.bottom - camY, frame, goal.secret);
-    if (goal.done && !goal.cut) return; // 通った後のテープは消える
+    if (goal.done) return; // 通った後のテープは消える（触れた時は星になって消える）
     const ty = Math.round(goal.y) - camY;
     const tx = x - 12;
     g.fillStyle = '#24141c';

@@ -517,7 +517,7 @@ export class LightOrb extends Sprite {
 }
 
 // ゴール（SMW のゴールテープ, sprite 0x7B）。2 本の柱の間をテープが上下する。
-// 柱の間を通るとゴール。テープに触れると、テープが切れて飛んでいく（ボーナス）
+// 柱の間を通るとゴール。テープに触れると、テープはその場で星になって消える
 // secret なら「ひみつのゴール」（色ちがいのゲート）：通ると地図の隠し道が開く（SMW の隠しゴール）
 export const GOAL_POST_H = 144;
 export class Goal extends Sprite {
@@ -536,13 +536,6 @@ export class Goal extends Sprite {
   }
 
   update(w) {
-    if (this.cut) {
-      // 切れたテープは飛んでいく
-      this.moveX();
-      this.moveY();
-      this.ys = Math.min(this.ys + 1, 0x20);
-      return;
-    }
     if (this.done) return;
     // Spr07B_GoalTape (01C098)
     if (!this.timer) {
@@ -558,10 +551,9 @@ export class Goal extends Sprite {
     if (((p.xpos - (this.x - 8)) & 0xffff) < 0x10 && p.ypos <= this.base && p.ypos + 0x20 > this.bottom - GOAL_POST_H) {
       this.done = true;
       if (touchesPlayer(p, this.hitbox)) {
+        // テープに触れた：SMW と同じく、テープはその場で消える（星になる）。ゴールの柱は動かない
         this.cut = true;
-        this.x0 = this.x;
-        this.xs = 16;
-        this.ys = -16;
+        for (const dx of [-8, 0, 8]) w.star(this.x + dx - 4, this.y - 4);
         w.emit('tape');
       }
       w.reachGoal(this.secret);
