@@ -1,9 +1,11 @@
 // オフライン用 Service Worker。ファイルを更新したら VERSION を上げる
-const VERSION = 'rumina-v33';
+const VERSION = 'rumina-v34';
+// BGM は大きいので、版を上げても消さない別のキャッシュに入れる（ファイル名の ?v= が中身のハッシュなので、曲を作り直せば別物になる）
+const BGM_CACHE = 'rumina-bgm-1';
 const ASSETS = [
   './', 'index.html', 'style.css', 'manifest.webmanifest',
   'js/main.js', 'js/player.js', 'js/smw_tables.js', 'js/sprites.js', 'js/rumina_frames.js',
-  'js/level.js', 'js/level_view.js', 'js/darkness.js', 'js/title.js', 'js/graycoin_art.js', 'js/input.js', 'js/sfx.js',
+  'js/level.js', 'js/level_view.js', 'js/darkness.js', 'js/title.js', 'js/graycoin_art.js', 'js/input.js', 'js/sfx.js', 'js/bgm.js', 'js/bgm_list.js', 'js/ending.js',
   'js/world.js', 'js/actors.js', 'js/art.js', 'js/haptics.js',
   'editor.html', 'editor.css', 'js/editor.js', 'js/stages/akihabara.js', 'js/stages/index.js', 'js/stages/stage1_2.js', 'js/stages/stage1_3.js', 'js/stages/stage1_4.js', 'js/stages/stage1_5.js', 'js/stages/stage1_5b.js',
   'js/stages/stage2_1.js', 'js/stages/stage2_2.js', 'js/stages/stage2_3.js', 'js/stages/stage2_4.js', 'js/stages/stage2_5.js', 'js/stages/stage2_5b.js',
@@ -25,13 +27,23 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION && k !== BGM_CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
 // ネットワーク優先・失敗時にキャッシュ（開発中でも更新が反映されやすい）
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  // BGM：キャッシュにあればそれを使う（一度聞いた曲はオフラインでも鳴る）
+  if (new URL(e.request.url).pathname.includes('/bgm/')) {
+    e.respondWith(
+      caches.open(BGM_CACHE).then((c) => c.match(e.request).then((hit) => hit || fetch(e.request).then((res) => {
+        if (res.ok) c.put(e.request, res.clone());
+        return res;
+      }))),
+    );
+    return;
+  }
   e.respondWith(
     fetch(e.request)
       .then((res) => {

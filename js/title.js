@@ -1,4 +1,5 @@
-// タイトル画面：ロゴ・ルミナ・グレイコインの回収率・クリア数と、メニュー（つづきから・はじめから・あそびかた・ステージエディタ・振動）
+// タイトル画面：ロゴ・ルミナ・グレイコインの回収率・クリア数と、メニュー（つづきから・はじめから・あそびかた・ステージエディタ・せってい）
+// せってい：BGM と効果音の大きさ（0〜10）、振動
 import { SCREEN_W, SCREEN_H, TILE, CAM_Y } from './level.js';
 import { PAD } from './player.js';
 import { POSE } from './player.js';
@@ -20,35 +21,52 @@ export class TitleScreen {
     this.items = [];
   }
 
-  // メニューの中身（セーブの有無と振動の設定で変わる）
-  setItems({ hasSave, haptics }) {
-    this.items = [
-      { id: 'continue', text: hasSave ? 'つづきから' : 'はじめる' },
-      ...(hasSave ? [{ id: 'new', text: 'はじめから' }] : []),
-      { id: 'help', text: 'あそびかた' },
-      { id: 'editor', text: 'ステージエディタ' },
-      { id: 'haptic', text: `振動：${haptics ? 'オン' : 'オフ'}` },
-    ];
+  // メニューの中身（セーブの有無と設定で変わる）。sub が 'settings' の時は「せってい」の中
+  setItems({ hasSave, haptics, bgm = 7, se = 8 }) {
+    if (this.sub === 'settings') {
+      this.items = [
+        { id: 'bgm', text: `BGM　◀ ${bgm} ▶`, vol: true },
+        { id: 'se', text: `効果音　◀ ${se} ▶`, vol: true },
+        { id: 'haptic', text: `振動：${haptics ? 'オン' : 'オフ'}` },
+        { id: 'back', text: 'もどる' },
+      ];
+    } else {
+      this.items = [
+        { id: 'continue', text: hasSave ? 'つづきから' : 'はじめる' },
+        ...(hasSave ? [{ id: 'new', text: 'はじめから' }] : []),
+        { id: 'help', text: 'あそびかた' },
+        { id: 'editor', text: 'ステージエディタ' },
+        { id: 'settings', text: 'せってい' },
+      ];
+    }
     this.cursor = Math.min(this.cursor, this.items.length - 1);
   }
 
-  // 1 フレーム進める。決めた項目の id を返す
+  // 1 フレーム進める。決めた項目の id を返す（音量の行は左右で 'bgm:-1'・'bgm:1'、決定で 'bgm:cycle'）
   step(pad) {
     this.frame++;
     const n = this.items.length;
     if (pad.press1 & PAD.UP) this.cursor = (this.cursor + n - 1) % n;
     if (pad.press1 & PAD.DOWN) this.cursor = (this.cursor + 1) % n;
     if ((pad.press1 & PAD.UP) || (pad.press1 & PAD.DOWN)) this.moved = true;
-    if ((pad.press1 & 0xc0) || (pad.press2 & 0x80) || pad.startPressed) return this.items[this.cursor].id;
+    const it = this.items[this.cursor];
+    if (it.vol) {
+      if (pad.press1 & PAD.LEFT) return `${it.id}:-1`;
+      if (pad.press1 & PAD.RIGHT) return `${it.id}:1`;
+    }
+    // 決定：音量の行は 1 つ上げる（10 の次は 0）
+    if ((pad.press1 & 0xc0) || (pad.press2 & 0x80) || pad.startPressed) return it.vol ? `${it.id}:cycle` : it.id;
     return null;
   }
 
-  // 画面の座標（256x224）でタップされた項目
+  // 画面の座標（256x224）でタップされた項目。音量の行は左半分で下げる・右半分で上げる
   hit(x, y) {
     const i = Math.floor((y - (MENU_Y - 11)) / ROW);
     if (x < MENU_X - MENU_W || x > MENU_X + MENU_W || i < 0 || i >= this.items.length) return null;
     this.cursor = i;
-    return this.items[i].id;
+    const it = this.items[i];
+    if (it.vol) return `${it.id}:${x < MENU_X ? -1 : 1}`;
+    return it.id;
   }
 
   draw(g, { coins, coinTotal, clears, clearTotal }) {

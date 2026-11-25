@@ -6,7 +6,9 @@ import { LevelView } from './level_view.js';
 import { Darkness } from './darkness.js';
 import { SCREEN_W, SCREEN_H } from './level.js';
 import { Input } from './input.js';
-import { sfx, unlockAudio } from './sfx.js';
+import { sfx, unlockAudio, getVolume, setVolume } from './sfx.js';
+import { bgm, musicFor } from './bgm.js';
+import { EndingScreen } from './ending.js';
 import { haptic, isHapticsOn, setHaptics } from './haptics.js';
 import { Overworld, loadSave, SAVE_KEY } from './overworld/overworld.js';
 import { OverworldView } from './overworld/overworld_view.js';
@@ -69,6 +71,9 @@ function makeOverworld() {
   return o;
 }
 let ow = DIRECT ? null : makeOverworld();
+
+// ステージの曲（custom・test はテーマで決まる）
+const levelMusic = () => musicFor(STAGES[stageIndex]?.id, levelData);
 // 'title'（タイトル）・'map'（地図）・'level'（ステージ）
 let mode = DIRECT ? 'level' : 'title';
 const fromMap = !DIRECT;
@@ -107,19 +112,63 @@ function playStage(id) {
 // ステージを作る。もう記録されているグレイコインはうすく描く
 function newWorld() {
   world = new World(levelData);
+  bgm.duck(false);
+  bgm.play(levelMusic());
   const st = STAGES[stageIndex];
   if (world.grayCoin && ow && st && ow.hasCoin(coinIdOf(st))) world.grayCoin.ghost = true;
+}
+
+// エンディング（地図に戻る前に。記録はもう済んでいる）
+const ending = new EndingScreen(sprite, view);
+function startEnding(st, power) {
+  mode = 'ending';
+  ending.start(endingItems(st), power);
+  bgm.jingle('ending', { delay: 0.3 });
+  syncMapBtn();
+}
+// 流れる文字：タイトル・ステージのエンディングの文・ぼうけんの記録（クリアしたステージ、★はグレイコイン）・おわりのあいさつ
+const WORLD_NAME = { E: 'エクストラ', HOME: 'ルミナの家', LAST: 'ひかりのみなもと' };
+function endingItems(st) {
+  const it = [{ text: 'ルミナ', kind: 'title' }, { text: 'ひかりの少女の だいぼうけん', kind: 'sub' }, { kind: 'gap', text: '' }];
+  for (const line of st.ending) it.push({ text: line, kind: 'line' });
+  it.push({ kind: 'gap', text: '' }, { text: '― ぼうけんの きろく ―', kind: 'head' });
+  let curWorld = null;
+  for (const s of STAGES) {
+    const cleared = ow.isCleared(s.credit || s.id) || ow.isCleared(`${s.credit || s.id}*`);
+    if (!cleared || s.id === 'HOME') continue;
+    const d = s.make();
+    const boss = d.spawns?.some((p) => /^boss/.test(p.type));
+    if (s.hidden && !boss && !/^LAST-/.test(s.id)) continue; // 扉の先の小部屋などは書かない
+    const w = s.id.split('-')[0];
+    if (w !== curWorld) {
+      curWorld = w;
+      it.push({ text: WORLD_NAME[w] ?? `ワールド${w}`, kind: 'head' });
+    }
+    const coin = !s.hidden && COIN_IDS.has(coinIdOf(s)) && ow.hasCoin(coinIdOf(s)) ? ' ★' : '';
+    it.push({ text: boss ? `${d.title} を たおした` : `${d.title || s.id}${coin}`, kind: 'line' });
+  }
+  const coins = (ow.save.coins ?? []).filter((id) => COIN_IDS.has(id)).length;
+  const pr = ow.progress();
+  it.push({ kind: 'gap', text: '' }, { text: '― きろく ―', kind: 'head' },
+    { text: `クリア ${pr.done} / ${pr.total}`, kind: 'line' }, { text: `グレイコイン ${coins} / ${COIN_IDS.size}`, kind: 'line' },
+    { kind: 'gap', text: '' }, { text: '― おんがく ―', kind: 'head' }, { text: '「かなでる」で つくりました', kind: 'line' },
+    { kind: 'gap', text: '' }, { kind: 'gap', text: '' }, { text: 'あそんでくれて ありがとう！', kind: 'end' });
+  return it;
 }
 
 function backToMap() {
   mode = 'map';
   paused = false;
+  bgm.duck(false);
+  bgm.play('map');
   syncMapBtn();
 }
 
 function toTitle() {
   mode = 'title';
   paused = false;
+  bgm.duck(false);
+  bgm.play('title');
   syncTitle();
   syncMapBtn();
 }
@@ -127,7 +176,7 @@ function toTitle() {
 // タイトルのメニュー（セーブがあるか・振動）
 function syncTitle() {
   const s = ow ? ow.save : loadSave();
-  title.setItems({ hasSave: s.cleared.length > 0 || s.map !== 'w1' || s.node !== 'S', haptics: isHapticsOn() });
+  title.setItems({ hasSave: s.cleared.length > 0 || s.map !== 'w1' || s.node !== 'S', haptics: isHapticsOn(), bgm: getVolume('bgm'), se: getVolume('se') });
 }
 
 // タイトルで選んだ
@@ -155,6 +204,20 @@ function titleAction(id) {
     setHaptics(!isHapticsOn());
     syncHapBtn();
     haptic('medium');
+    syncTitle();
+  } else if (id === 'settings' || id === 'back') {
+    // せってい（BGM・効果音の大きさ、振動）を開く・閉じる
+    title.sub = id === 'settings' ? 'settings' : null;
+    title.cursor = id === 'settings' ? 0 : title.items.findIndex((it) => it.id === 'settings');
+    sfx.reveal();
+    syncTitle();
+    if (title.cursor < 0) title.cursor = 0;
+  } else if (/^(bgm|se):/.test(id)) {
+    // 音量を 1 つ上げ下げ（効果音は変えた大きさで鳴らしてみる）
+    const [kind, d] = id.split(':');
+    const v = getVolume(kind);
+    setVolume(kind, d === 'cycle' ? (v >= 10 ? 0 : v + 1) : v + Number(d));
+    if (kind === 'se') sfx.message();
     syncTitle();
   }
 }
@@ -198,6 +261,13 @@ function step() {
     titleAction(a);
     return;
   }
+  if (mode === 'ending') {
+    if (ending.step(pad) === 'exit') {
+      sfx.door();
+      fadeTo(backToMap);
+    }
+    return;
+  }
   if (mode === 'map') {
     // START でタイトルへ
     if (pad.startPressed) {
@@ -218,12 +288,16 @@ function step() {
   if (pad.startPressed) {
     paused = !paused;
     sfx.pause();
+    bgm.duck(paused);
   }
   if (paused) return;
   world.step(pad);
   if (world.coinTaken) coinCarry = true;
   for (const ev of world.events) {
-    if (sfx[ev]) sfx[ev]();
+    if (ev === 'goal') bgm.jingle('clear'); // ゴール：曲を止めてコースクリアのジングル
+    else if (sfx[ev]) sfx[ev]();
+    if (ev === 'die') bgm.jingle('miss', { delay: 0.45 }); // ミス：やられた音のあとにジングル
+    if (ev === 'bossdown') bgm.stop(0.8); // ボスを倒した：曲が消えて、消え終わったらジングル
     if (HAPTIC_OF[ev]) haptic(HAPTIC_OF[ev]);
   }
   world.events.length = 0;
@@ -246,6 +320,7 @@ function step() {
       // 行き先の無い扉（エディタで行き先を空にした）は、入るとコースクリア
       world.cleared = true;
       clearTimer = 1;
+      bgm.jingle('clear');
       return;
     }
     stageIndex = i;
@@ -267,6 +342,8 @@ function step() {
       backToMap();
       if (coin) ow.markCoin(coinIdOf(st)); // グレイコインは取ってコースクリアした時に記録する
       ow.markCleared(exit, power);
+      // エンディングのあるステージ（やみの大王・ほしのはて・最終コース）：記録してから、エンディングを見せて地図へ
+      if (st.ending) startEnding(st, power);
     });
     return;
   }
@@ -380,6 +457,15 @@ function render() {
     }
     return;
   }
+  if (mode === 'ending') {
+    ending.draw(g);
+    const a = fadeAlpha();
+    if (a) {
+      g.fillStyle = `rgba(0,0,0,${a})`;
+      g.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    }
+    return;
+  }
   if (mode === 'map') {
     owView.draw(g, ow, ow.frame, ow.save.power, fadeAlpha());
     if (showDebug) debugEl.textContent = `map ${ow.mapId}  node ${ow.nodeKey}  ${ow.x},${ow.y}\ncleared ${ow.save.cleared.join(' ')}`;
@@ -451,6 +537,11 @@ function renderLevel() {
     g.font = 'bold 16px monospace';
     g.textAlign = 'center';
     g.fillText('PAUSE', SCREEN_W / 2, SCREEN_H / 2);
+    // 操作のヒント
+    g.font = 'bold 9px system-ui, sans-serif';
+    g.fillStyle = '#ffe070';
+    g.fillText('START で つづける', SCREEN_W / 2, SCREEN_H / 2 + 20);
+    if (fromMap) g.fillText('「ちず」ボタン（M キー）で 地図へ もどる', SCREEN_W / 2, SCREEN_H / 2 + 33);
     g.textAlign = 'left';
   }
   if (showDebug) {
@@ -594,6 +685,9 @@ canvas.addEventListener('pointerdown', (e) => {
   titleAction(title.hit(x, y));
 });
 syncTitle();
+// 起動した時の曲（音が出せるのは最初のタップ・キーの後）
+if (DIRECT) bgm.play(levelMusic());
+else bgm.play('title');
 function exitToMap() {
   if (!fromMap || mode !== 'level' || trans) return;
   // ゴールした後（クリアの記録の前）・扉に入った後・ミスや大きさが変わる演出の間は戻れない
@@ -620,4 +714,4 @@ document.getElementById('btn-save-reset').addEventListener('click', (e) => {
 });
 
 // デバッグ・自動テスト用
-window.rumina = { get world() { return world; }, get ow() { return ow; }, get mode() { return mode; }, get title() { return title; }, COIN_IDS };
+window.rumina = { get world() { return world; }, get ow() { return ow; }, get mode() { return mode; }, get title() { return title; }, get ending() { return ending; }, bgm, COIN_IDS };
